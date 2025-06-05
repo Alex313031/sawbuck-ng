@@ -75,6 +75,7 @@
 /third_party/skia/
 /third_party/sqlite/
 /third_party/vsssdk72/
+/tools/gyp/
 /tools/win/gn.exe
 /tools/win/gn_win.exe
 
