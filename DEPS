@@ -20,7 +20,7 @@ vars = {
   "chrome_revision": "448c438598eefecd7809b9fa70fece1e89d79172",
   "gmock_revision": "6b1759c3816d574bddde3e1725c51a811c8870e7",
   "gtest_revision": "74de57c951aedebc5dfe26a27604353432392b98",
-  "gyp_revision": "63a1f78eb0ec6c4ddcc23e920230bdb0b14f7855",
+  "gyp_revision": "e0ee72ddc7fb97eb33d530cf684efcbe4d27ecb3",
 
   # Paths to installed utilities used in hooks. These need to use
   # Windows style paths.
@@ -34,7 +34,7 @@ vars = {
   "gmock_base": "https://github.com/svn2github/chromium-gmock.git",
   "google_apis_base": "https://chromium.googlesource.com/chromium/src/google_apis.git",
   "gtest_base": "https://github.com/svn2github/chromium-gtest.git",
-  "gyp_base": "https://chromium.googlesource.com/external/gyp.git",
+  "gyp_base": "https://github.com/svn2github/gyp.git",
   "icu_base": "https://chromium.googlesource.com/chromium/third_party/icu46.git",
   "modp_b64_base": "https://chromium.googlesource.com/chromium/src/third_party/modp_b64.git",
   "psyco_win32_base": "https://chromium.googlesource.com/chromium/deps/psyco_win32.git",
