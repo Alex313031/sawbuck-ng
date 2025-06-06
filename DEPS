@@ -35,7 +35,7 @@ vars = {
   "google_apis_base": "https://chromium.googlesource.com/chromium/src/google_apis.git",
   "gtest_base": "https://github.com/svn2github/chromium-gtest.git",
   "gyp_base": "https://chromium.googlesource.com/external/gyp.git",
-  "icu_base": "https://chromium.googlesource.com/chromium/deps/icu46.git",
+  "icu_base": "https://chromium.googlesource.com/chromium/third_party/icu46.git",
   "modp_b64_base": "https://chromium.googlesource.com/chromium/src/third_party/modp_b64.git",
   "psyco_win32_base": "https://chromium.googlesource.com/chromium/deps/psyco_win32.git",
   "python_26_base": "https://github.com/svn2github/chromium-python26.git",
@@ -68,7 +68,7 @@ deps = {
     Var("gyp_base") + "@" + Var("gyp_revision"),
 
   "src/third_party/icu":
-    Var("icu_base") + "@" + 'fffc215567216e09f56578b254a56668f1c89add',
+    Var("icu_base") + "@" + '78597121d71a5922f5726e715c6ad06c50ae6cdc',
   #"src/third_party/modp_b64":
     #Var("modp_b64_base") + "@" + 'NA',
   "src/third_party/psyco_win32":
