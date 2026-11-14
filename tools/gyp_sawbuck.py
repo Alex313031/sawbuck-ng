@@ -42,10 +42,15 @@ Two details the old hook got for free and this has to arrange:
 Paths are always resolved against the repository root, not the working
 directory, so this can be run from anywhere.
 
-The Visual Studio version is not pinned. Unless --msvs-version says otherwise,
-GYP picks it up from $GYP_MSVS_VERSION, and failing that probes for whichever
-Visual Studio is installed -- so the DEPS hook works unattended on any machine
-with a supported VS.
+The Visual Studio version is detected, not hardcoded: --msvs-version wins, then
+$GYP_MSVS_VERSION, then whatever is installed. So the DEPS hook works unattended
+on any machine with a supported VS.
+
+Detection runs with GYP's fallback disabled, and the result is pinned
+explicitly. Left to itself, GYP quietly falls back to *Visual Studio 2005* when
+it finds no installation, emitting .vcproj files in the 2005 format -- a
+failure whose only symptom is the VS migrator later offering to upgrade a
+17-year-old project. Here, failing to detect a VS is an error.
 
 Build files are loaded serially. GYP's parallel loader sizes a multiprocessing
 pool from the CPU count, and on Windows that breaks above ~62 cores, because
@@ -147,12 +152,32 @@ def main():
     msvs_version = args.msvs_version or os.environ.get('GYP_MSVS_VERSION')
 
     if fmt == 'msvs':
-        # Only pin a version when one was actually asked for. Left alone, GYP
-        # selects 'auto', which reads $GYP_MSVS_VERSION and otherwise probes
-        # for whichever Visual Studio is installed -- so the DEPS hook works
-        # unattended on a machine with any supported VS, not just 2022.
-        if msvs_version:
-            argv += ['-G', 'msvs_version=%s' % msvs_version]
+        # Resolve the Visual Studio version up front, with GYP's fallback
+        # DISABLED, then pin the result.
+        #
+        # This matters a lot. GYP's default 'auto' handling falls back to
+        # *Visual Studio 2005* when it cannot find an installation -- silently.
+        # That emits .vcproj files in the 2005 format, and the only sign of
+        # trouble is the VS migrator later offering to convert a 17-year-old
+        # project. Failing loudly here is far better than generating a build
+        # for the wrong toolchain.
+        #
+        # Passing the resolved name explicitly also stops GYP re-running 'auto'
+        # and reaching that fallback on its own.
+        from gyp.MSVSVersion import SelectVisualStudioVersion
+        try:
+            vs = SelectVisualStudioVersion(msvs_version or 'auto',
+                                           allow_fallback=False)
+        except Exception as e:
+            print('error: %s' % e, file=sys.stderr)
+            print('Pick one with --msvs-version=<year> or $GYP_MSVS_VERSION, '
+                  'and check that it is installed.\n'
+                  'The msvs generator needs a real toolchain; to validate the '
+                  'build graph without one, use --check.', file=sys.stderr)
+            return 2
+        print('Using Visual Studio %s (project format %s).'
+              % (vs.ShortName(), vs.ProjectVersion()))
+        argv += ['-G', 'msvs_version=%s' % vs.ShortName()]
     else:
         # The msvs generator computes these itself, but every other generator
         # leaves them undefined and common.gypi branches on both. Off-Windows
