@@ -70,7 +70,9 @@ vars = {
   'base_revision': '26cfa60ca6f473a3bb426cea02a7d643ea795089',            # 2014-05-19
   'build_revision': '294439de90427eb89e5f1bb23c8daa95b8350395',           # 2014-05-19
   'testing_revision': 'cbc76319f284b6ab55fd1f36a954afea7f8aac03',         # 2014-05-16
-  'google_apis_revision': '6c69993c84c1eed8d4194ad704a19b02be67cb58',     # 2014-05-15
+  # Not fetched; see the commented-out google_apis entry below. The resolved
+  # pin is kept here so restoring it needs no re-resolving.
+  # 'google_apis_revision': '6c69993c84c1eed8d4194ad704a19b02be67cb58',   # 2014-05-15
   'tools_win_revision': 'ea95f6435a0becd1fabd26d202a12690c762ead7',       # 2014-04-16
   'code_coverage_revision': '23081ea84f5af2b0445e4475581ce5e3f8485164',   # 2013-11-14
   'zlib_revision': '7e84479ea07c6fd65d77412bcbf735751f42e230',            # 2014-05-07
@@ -97,8 +99,14 @@ deps = {
   'base':
     '{chromium_git}/chromium/src/base.git@{base_revision}',
 
-  'google_apis':
-    '{chromium_git}/chromium/src/google_apis.git@{google_apis_revision}',
+  # Vestigial. Google API keys / client config headers, inherited from the era
+  # when this SVN repo was shared with Syzygy. Nothing references it: no .gyp,
+  # .gypi or source file in the tree mentions it (the only hits are comments in
+  # build/common.gypi and build/all.gyp, which is never loaded), and generation
+  # succeeds with the directory deleted. Commented out rather than dropped so
+  # the pin survives if it turns out to be needed.
+  # 'google_apis':
+  #   '{chromium_git}/chromium/src/google_apis.git@{google_apis_revision}',
 
   'third_party/zlib':
     '{chromium_git}/chromium/src/third_party/zlib.git@{zlib_revision}',

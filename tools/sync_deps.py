@@ -95,8 +95,11 @@ DEPS = [
      'src/base@271365'),
     ('build', 'chromium/src', CHROMIUM_SRC, 'build',
      'src/build@271365'),
-    ('google_apis', 'chromium/src', CHROMIUM_SRC, 'google_apis',
-     'src/google_apis@271365'),
+    # Vestigial, so not fetched -- nothing in the tree references google_apis
+    # and generation succeeds without it. Left here, commented, so the pin
+    # survives if it turns out to be needed. Also commented out in DEPS.
+    # ('google_apis', 'chromium/src', CHROMIUM_SRC, 'google_apis',
+    #  'src/google_apis@271365'),
     # Supplies gtest.gyp and gmock.gyp, which sawbuck's .gyp files depend on.
     ('testing', 'chromium/src', CHROMIUM_SRC, 'testing',
      'src/testing@271365'),

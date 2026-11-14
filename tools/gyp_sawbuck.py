@@ -42,11 +42,22 @@ Two details the old hook got for free and this has to arrange:
 Paths are always resolved against the repository root, not the working
 directory, so this can be run from anywhere.
 
+The Visual Studio version is not pinned. Unless --msvs-version says otherwise,
+GYP picks it up from $GYP_MSVS_VERSION, and failing that probes for whichever
+Visual Studio is installed -- so the DEPS hook works unattended on any machine
+with a supported VS.
+
+Build files are loaded serially. GYP's parallel loader sizes a multiprocessing
+pool from the CPU count, and on Windows that breaks above ~62 cores, because
+WaitForMultipleObjects accepts at most 64 handles. Serial loading costs ~50ms
+here and gives better diagnostics. --parallel opts back in.
+
 Usage:
-  ./tools/gyp_sawbuck.py                 # generate (msvs on Windows, ninja elsewhere)
-  ./tools/gyp_sawbuck.py --check         # validate the graph only; writes to a temp dir
-  ./tools/gyp_sawbuck.py --format=ninja  # pick a generator explicitly
-  ./tools/gyp_sawbuck.py -- <gyp args>   # pass anything else straight to GYP
+  ./tools/gyp_sawbuck.py                    # generate (msvs on Windows, ninja elsewhere)
+  ./tools/gyp_sawbuck.py --check            # validate the graph only; writes to a temp dir
+  ./tools/gyp_sawbuck.py --format=ninja     # pick a generator explicitly
+  ./tools/gyp_sawbuck.py --msvs-version=2019  # override VS detection
+  ./tools/gyp_sawbuck.py -- <gyp args>      # pass anything else straight to GYP
 """
 
 import argparse
@@ -64,6 +75,11 @@ BUILD_DIR = os.path.join(ROOT, 'build')
 BUILD_FILE = 'sawbuck/sawbuck.gyp'
 INCLUDES = ['build/common.gypi', 'sawbuck/sawbuck.gypi']
 
+# Used only by non-msvs generators, which have no toolchain to probe. Any value
+# common.gypi recognises will do; it only feeds conditions like
+# MSVS_VERSION=="2013e".
+FALLBACK_MSVS_VERSION = '2022'
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -76,8 +92,13 @@ def parse_args():
                         help='only check that the graph loads and evaluates; '
                              'generate into a temporary directory and discard '
                              'it. Works off-Windows, where msvs cannot run.')
-    parser.add_argument('--msvs-version', default='2022',
-                        help='Visual Studio version (default: 2022)')
+    parser.add_argument('--msvs-version', default=None,
+                        help='Visual Studio version, e.g. 2019. Defaults to '
+                             '$GYP_MSVS_VERSION, or to whatever GYP '
+                             'autodetects on the machine.')
+    parser.add_argument('--parallel', action='store_true',
+                        help='load build files in parallel. Off by default; '
+                             'see the note on Windows and core counts below.')
     parser.add_argument('gyp_args', nargs='*', metavar='-- GYP_ARG',
                         help='additional arguments passed through to GYP')
     return parser.parse_args()
@@ -110,14 +131,33 @@ def main():
         # Carried over from the DEPS.sawbuck hook.
         '--no-circular-check',
     ]
+
+    if not args.parallel:
+        # GYP's parallel loader does multiprocessing.Pool(cpu_count()), and on
+        # Windows the pool's manager thread waits on one sentinel per worker.
+        # WaitForMultipleObjects accepts at most 64 handles, so on a machine
+        # with more than ~62 cores that raises
+        #   ValueError: need at most 63 handles, got a sequence of length N
+        # and generation dies. Serial loading costs ~50ms on this graph and
+        # reports which target pulled in a missing file, which the parallel
+        # loader does not.
+        argv.append('--no-parallel')
     argv += ['--include=%s' % i for i in INCLUDES]
 
+    msvs_version = args.msvs_version or os.environ.get('GYP_MSVS_VERSION')
+
     if fmt == 'msvs':
-        argv += ['-G', 'msvs_version=%s' % args.msvs_version]
+        # Only pin a version when one was actually asked for. Left alone, GYP
+        # selects 'auto', which reads $GYP_MSVS_VERSION and otherwise probes
+        # for whichever Visual Studio is installed -- so the DEPS hook works
+        # unattended on a machine with any supported VS, not just 2022.
+        if msvs_version:
+            argv += ['-G', 'msvs_version=%s' % msvs_version]
     else:
         # The msvs generator computes these itself, but every other generator
-        # leaves them undefined and common.gypi branches on both.
-        argv += ['-D', 'MSVS_VERSION=%s' % args.msvs_version,
+        # leaves them undefined and common.gypi branches on both. Off-Windows
+        # there is nothing to autodetect, so fall back to a plausible value.
+        argv += ['-D', 'MSVS_VERSION=%s' % (msvs_version or FALLBACK_MSVS_VERSION),
                  '-D', 'MSVS_OS_BITS=64']
 
     tmpdir = None
