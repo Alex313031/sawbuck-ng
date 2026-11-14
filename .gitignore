@@ -92,6 +92,7 @@
 # tools/ holds our own scripts alongside the synced tools/{win,code_coverage,
 # gyp,gyp-next}, so ignore everything in it except what we maintain.
 /tools/*
+!/tools/apply_patches.py
 !/tools/gyp_sawbuck.py
 !/tools/sync_deps.py
 

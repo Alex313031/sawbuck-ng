@@ -164,20 +164,40 @@ def main():
         #
         # Passing the resolved name explicitly also stops GYP re-running 'auto'
         # and reaching that fallback on its own.
-        from gyp.MSVSVersion import SelectVisualStudioVersion
-        try:
-            vs = SelectVisualStudioVersion(msvs_version or 'auto',
-                                           allow_fallback=False)
-        except Exception as e:
-            print('error: %s' % e, file=sys.stderr)
-            print('Pick one with --msvs-version=<year> or $GYP_MSVS_VERSION, '
-                  'and check that it is installed.\n'
-                  'The msvs generator needs a real toolchain; to validate the '
-                  'build graph without one, use --check.', file=sys.stderr)
-            return 2
-        print('Using Visual Studio %s (project format %s).'
-              % (vs.ShortName(), vs.ProjectVersion()))
-        argv += ['-G', 'msvs_version=%s' % vs.ShortName()]
+        if msvs_version:
+            # Asked for explicitly, so take it at face value and skip GYP's
+            # installation check. That check is unreliable past VS2015: its
+            # primary probe reads HKLM\...\VisualStudio\<ver>\InstallDir, a key
+            # VS2017 and newer no longer create, and its secondary probe only
+            # special-cases 15.0 -- 16.0 and 17.0 fall through to a branch that
+            # labels them Express editions. A VS2022 install is routinely not
+            # found. GYP copes: given an explicit version it emits projects for
+            # it and lets MSBuild locate the toolchain, which is what we want.
+            resolved = msvs_version
+            source = 'requested'
+        else:
+            # Nothing specified, so detect -- with GYP's fallback DISABLED.
+            # Left to itself, GYP answers 'auto' with *Visual Studio 2005* when
+            # it finds nothing, silently emitting .vcproj files in the 2005
+            # format. The only symptom is the VS migrator later offering to
+            # upgrade a 17-year-old project, so this must not be allowed to
+            # pass quietly.
+            from gyp.MSVSVersion import SelectVisualStudioVersion
+            try:
+                resolved = SelectVisualStudioVersion(
+                    'auto', allow_fallback=False).ShortName()
+            except Exception as e:
+                print('error: %s' % e, file=sys.stderr)
+                print('GYP cannot reliably detect VS2017 or newer. Name it '
+                      'explicitly:\n'
+                      '    set GYP_MSVS_VERSION=2022\n'
+                      'or pass --msvs-version=2022. To check the build graph '
+                      'without a toolchain, use --check.', file=sys.stderr)
+                return 2
+            source = 'detected'
+
+        print('Using Visual Studio %s (%s).' % (resolved, source))
+        argv += ['-G', 'msvs_version=%s' % resolved]
     else:
         # The msvs generator computes these itself, but every other generator
         # leaves them undefined and common.gypi branches on both. Off-Windows

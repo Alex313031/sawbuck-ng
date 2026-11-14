@@ -174,6 +174,16 @@ include_rules = [
 
 hooks = [
   {
+    # Must run before the generator: it patches build/common.gypi, which GYP
+    # then reads. Some fixes have to be made inside the dependencies fetched
+    # above, and a direct edit there would be undone by the next sync -- so
+    # they live in patches/ and are reapplied here. Reapplying is a no-op when
+    # a patch is already in place, which is the usual case.
+    'name': 'apply_patches',
+    'pattern': '.',
+    'action': ['python3', 'tools/apply_patches.py'],
+  },
+  {
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     'name': 'gyp_sawbuck',
     'pattern': '.',

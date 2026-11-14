@@ -1,0 +1,5 @@
+# Patches applied to the DEPS-synced dependencies, in order, by
+# tools/apply_patches.py (run as a DEPS hook before GYP).
+#
+# These cannot live as direct edits: gclient sync restores the trees.
+01-build-use-installed-windows-sdk.patch

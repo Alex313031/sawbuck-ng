@@ -1,0 +1,89 @@
+Use the installed Windows SDK instead of hardcoded SDK 8.0 paths.
+
+build/common.gypi dates from 2014 and wires Windows SDK 8.0 locations straight
+into the compiler and linker settings:
+
+  * windows_sdk_path defaults to 'C:/Program Files (x86)/Windows Kits/8.0'
+    (the detected fallback, third_party/platformsdk_win8, is not fetched).
+  * Include dirs are '<sdk>/Include/{shared,um,winrt}'. SDK 10 nests those
+    under a version directory, and adds 'ucrt', which did not exist yet.
+  * Library dirs are '<sdk>/Lib/win8/um/<arch>'. SDK 10 uses
+    'Lib/<version>/um/<arch>'.
+
+On a VS2022 machine none of those paths exist. They are prepended to the real
+ones, so cl and link silently ignore them -- but they are wrong, they mask
+which SDK is actually in use, and they are what the VS project migrator
+complains about ("could not convert attribute AdditionalLibraryDirectories...
+Windows Kits\8.0\Lib\win8\um\x86").
+
+GYP's msvs generator emits WindowsTargetPlatformVersion, so MSBuild's own
+toolset property sheets resolve the SDK and ATL include/library paths
+correctly. This drops the hardcoded entries and lets that happen.
+
+The variable definition itself is left in place; nothing references it now.
+
+--- a/build/common.gypi
++++ b/build/common.gypi
+@@ -2903,18 +2903,13 @@
+         'msvs_settings': {
+           'VCLinkerTool': {
+             'TargetMachine': '17', # x86 - 64
+-            'AdditionalLibraryDirectories!':
+-              ['<(windows_sdk_path)/Lib/win8/um/x86'],
+-            'AdditionalLibraryDirectories':
+-              ['<(windows_sdk_path)/Lib/win8/um/x64'],
++            # PATCHED: SDK 8.0 'Lib/win8/um/<arch>' paths dropped; MSBuild
++            # resolves the SDK libraries from WindowsTargetPlatformVersion.
+             # Doesn't exist x64 SDK. Should use oleaut32 in any case.
+             'IgnoreDefaultLibraryNames': [ 'olepro32.lib' ],
+           },
+           'VCLibrarianTool': {
+-            'AdditionalLibraryDirectories!':
+-              ['<(windows_sdk_path)/Lib/win8/um/x86'],
+-            'AdditionalLibraryDirectories':
+-              ['<(windows_sdk_path)/Lib/win8/um/x64'],
++            # PATCHED: see above.
+             'TargetMachine': '17', # x64
+           },
+         },
+@@ -4945,10 +4940,14 @@
+           }],
+         ],
+         'msvs_system_include_dirs': [
+-          '<(windows_sdk_path)/Include/shared',
+-          '<(windows_sdk_path)/Include/um',
+-          '<(windows_sdk_path)/Include/winrt',
+-          '$(VSInstallDir)/VC/atlmfc/include',
++          # PATCHED: these pointed into Windows SDK 8.0, whose layout
++          # ('Include/shared' etc. directly under the SDK root) no longer
++          # matches SDK 10, and which has no 'ucrt' entry because the
++          # Universal CRT postdates this file. '$(VSInstallDir)/VC/atlmfc'
++          # likewise moved under VC/Tools/MSVC in VS2017.
++          #
++          # GYP sets WindowsTargetPlatformVersion, so MSBuild's own toolset
++          # property sheets supply the correct SDK and ATL include paths.
+         ],
+         'msvs_cygwin_shell': 0,
+         'msvs_disabled_warnings': [4351, 4355, 4396, 4503, 4819,
+@@ -4978,9 +4977,7 @@
+           },
+           'VCLibrarianTool': {
+             'AdditionalOptions': ['/ignore:4221'],
+-            'AdditionalLibraryDirectories': [
+-              '<(windows_sdk_path)/Lib/win8/um/x86',
+-            ],
++            # PATCHED: SDK 8.0 library path dropped; see above.
+           },
+           'VCLinkerTool': {
+             'AdditionalDependencies': [
+@@ -4995,9 +4992,7 @@
+               'winmm.lib',
+               'shlwapi.lib',
+             ],
+-            'AdditionalLibraryDirectories': [
+-              '<(windows_sdk_path)/Lib/win8/um/x86',
+-            ],
++            # PATCHED: SDK 8.0 library path dropped; see above.
+             'GenerateDebugInformation': 'true',
+             'MapFileName': '$(OutDir)\\$(TargetName).map',
+             'ImportLibrary': '$(OutDir)\\lib\\$(TargetName).lib',

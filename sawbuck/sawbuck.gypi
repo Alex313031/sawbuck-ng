@@ -37,6 +37,13 @@
     # warning is treated as an error") wall. Set to 'true' to put it back once
     # the remaining warnings are dealt with.
     'sawbuck_warn_as_error%': 'false',
+
+    # Same, for third-party code -- which needs its own switch. common.gypi
+    # applies this one from a 'target_conditions' block, and those are
+    # evaluated per target *after* target_defaults is merged in, so they
+    # overwrite anything set there. ICU is the case in point: it kept /WX and
+    # died on a warning in uresbund.c while first-party code built fine.
+    'win_third_party_warn_as_error%': 'false',
   },
 
   # NOTE: GYP applies this file to *every* .gyp in the tree (it is passed with
