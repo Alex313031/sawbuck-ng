@@ -13,6 +13,10 @@
 # limitations under the License.
 
 {
+  # Settings for Sawbuck's own targets, e.g. the Windows version we
+  # target. Deliberately not in sawbuck.gypi, which GYP applies to the
+  # whole tree including Chromium's base.
+  'includes': ['../sawbuck_targets.gypi'],
   'variables': {
     'chromium_code': 1,
   },

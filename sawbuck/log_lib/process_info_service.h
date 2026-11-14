@@ -17,6 +17,7 @@
 #define SAWBUCK_LOG_LIB_PROCESS_INFO_SERVICE_H_
 
 #include <map>
+#include <string>
 #include "base/synchronization/lock.h"
 #include "sawbuck/log_lib/kernel_log_consumer.h"
 

@@ -94,10 +94,10 @@ def Emit(outfile, templ, num_args):
   """Emits a template function for num_args arguments"""
   mapping = {
     'templ_params':
-      ", ".join(["class A%d" % d for d in xrange(1, num_args + 1)]),
+      ", ".join(["class A%d" % d for d in range(1, num_args + 1)]),
     'params':
-      ", ".join(["const A%d &a%d" % (d, d) for d in xrange(1, num_args + 1)]),
-    'args': ", ".join(["a%d" % d for d in xrange(1, num_args + 1)]),
+      ", ".join(["const A%d &a%d" % (d, d) for d in range(1, num_args + 1)]),
+    'args': ", ".join(["a%d" % d for d in range(1, num_args + 1)]),
   }
   outfile.write(templ.substitute(mapping))
 
@@ -109,7 +109,7 @@ def Main(outfile):
   """Emits the contents of initializing_coclass-inl.h."""
   outfile.write(HEADER_)
   # do one to NUM_ARGUMENTS arguments
-  for num_args in xrange(1, 1 + NUM_ARGUMENTS):
+  for num_args in range(1, 1 + NUM_ARGUMENTS):
     Emit(outfile, TEMPLATE_, num_args)
   outfile.write(FOOTER_)
 

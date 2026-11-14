@@ -16,6 +16,7 @@
 #ifndef SAWBUCK_VIEWER_PROVIDER_CONFIGURATION_H_
 #define SAWBUCK_VIEWER_PROVIDER_CONFIGURATION_H_
 
+#include <string>
 #include <vector>
 #include "base/win/event_trace_provider.h"
 
