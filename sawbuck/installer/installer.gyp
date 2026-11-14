@@ -63,7 +63,7 @@
           ],
           'action': [
             '<(candle_exe)',
-            '-I<(INTERMEDIATE_DIR)\.',
+            '-I<(INTERMEDIATE_DIR)\\.',
             'sawbuck.wxs',
             '-out',
             '<@(_outputs)',

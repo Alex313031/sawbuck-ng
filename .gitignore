@@ -18,8 +18,16 @@
 *.suo
 *.user
 
-# Ignore GYP generated Visual Studio 2008 artifacts.
+# Ignore GYP generated Visual Studio artifacts.
 *.vcproj
+*.vcxproj.user
+*.vs/
+/.idea/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
 # Ignore GYP generated Visual Studio 2010 artifacts.
 # Note: This excludes *.xml, which is rather heavy handed. The
@@ -80,12 +88,21 @@
 /third_party/sqlite/
 /third_party/tcmalloc
 /third_party/vsssdk72/
-/third_party/wtl/
 /third_party/zlib/
-/tools/
+# tools/ holds our own scripts alongside the synced tools/{win,code_coverage,
+# gyp,gyp-next}, so ignore everything in it except what we maintain.
+/tools/*
+!/tools/gyp_sawbuck.py
+!/tools/sync_deps.py
 
 # Ignore SVN metadata.
 .svn/
 
 # Ignore Python build artifacts
 *.egg-info/
+
+.DS_Store
+.eslintcache
+.directory
+Thumbs.db
+__pycache__/

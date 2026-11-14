@@ -18,7 +18,6 @@ and substitutes $(key) strings in the input file to create the output file.
 The output file is only rewritten if the contents will be different from
 the existing contents.
 '''
-import exceptions
 import optparse
 import os
 import re
@@ -30,12 +29,12 @@ _USAGE = 'usage: %prog [option] [key files]\n' + __doc__
 
 
 _LINE_RE = re.compile('^'
-    '(?P<key>\w+)=(?P<value>.*)|'         # key=value
-    '(?P<comment>\s*(?:#.*)?)'            # WS or comment
+    r'(?P<key>\w+)=(?P<value>.*)|'        # key=value
+    r'(?P<comment>\s*(?:#.*)?)'           # WS or comment
   '$')
 
 
-class Error(exceptions.Exception):
+class Error(Exception):
   pass
 
 
