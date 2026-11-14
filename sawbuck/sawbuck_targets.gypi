@@ -29,7 +29,18 @@
   'target_defaults': {
     'conditions': [
       ['OS=="win"', {
-        # Target Windows XP.
+        # Target Windows Vista. TEMPORARY -- the floor is headed back down to
+        # XP (0x0501) once the XP support work lands.
+        #
+        # Raised only to unblock the build. Two things need handling at an XP
+        # floor, both in the SDK headers rather than in Sawbuck's logic:
+        #
+        #   * WTL's atltheme.h includes the long-removed <tmschema.h> below
+        #     NTDDI_LONGHORN. WTL already has the escape hatch for this:
+        #     define _WTL_USE_VSSYM32 to get <vssym32.h> instead.
+        #   * viewer/filter_dialog.cc uses ATL's CShellFileOpenDialog /
+        #     CShellFileSaveDialog and the FOS_* flags, which the SDK declares
+        #     only from NTDDI_VISTA up.
         #
         # build/common.gypi targets Windows 8 (_WIN32_WINNT=0x0602,
         # WINVER=0x0602, NTDDI_VERSION=0x06020000). Those have to be removed
@@ -43,14 +54,13 @@
           'NTDDI_VERSION=0x06020000',
         ],
         'defines': [
-          '_WIN32_WINNT=0x0501',
-          'WINVER=0x0501',
-          # Kept consistent with _WIN32_WINNT on purpose: the SDK's
-          # sdkddkver.h derives and cross-checks these, so a Win8
-          # NTDDI_VERSION against an XP _WIN32_WINNT is not a coherent
-          # configuration. 0x05010300 is XP SP3, the last XP service pack;
-          # drop to 0x05010000 for XP RTM.
-          'NTDDI_VERSION=0x05010300',
+          '_WIN32_WINNT=0x0600',
+          'WINVER=0x0600',
+          # All three move together: the SDK's sdkddkver.h derives and
+          # cross-checks them, so a mismatched pair is not a coherent
+          # configuration. For XP this becomes 0x05010300 (SP3), or
+          # 0x05010000 for RTM.
+          'NTDDI_VERSION=0x06000000',
         ],
       }],
     ],
