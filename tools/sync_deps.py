@@ -114,10 +114,12 @@ DEPS = [
     # Supplies gtest.gyp and gmock.gyp, which sawbuck's .gyp files depend on.
     ('testing', 'chromium/src', CHROMIUM_SRC, 'testing',
      'src/testing@271365'),
-    ('tools/win', 'chromium/src', CHROMIUM_SRC, 'tools/win',
-     'src/tools/win@271365'),
-    ('tools/code_coverage', 'chromium/src', CHROMIUM_SRC, 'tools/code_coverage',
-     'src/tools/code_coverage@271365'),
+    # Not fetched -- nothing in the tree references either, and removing them
+    # loses no generated targets. Left commented so the pins survive.
+    # ('tools/win', 'chromium/src', CHROMIUM_SRC, 'tools/win',
+    #  'src/tools/win@271365'),
+    # ('tools/code_coverage', 'chromium/src', CHROMIUM_SRC, 'tools/code_coverage',
+    #  'src/tools/code_coverage@271365'),
     # third_party/wtl is committed in-tree, not fetched: it has no standalone
     # mirror anywhere and Chromium's copy is patched, so there is nothing to
     # sync it from. See DEPS.
@@ -125,8 +127,10 @@ DEPS = [
      'src/third_party/zlib@271365'),
     ('third_party/modp_b64', 'chromium/src', CHROMIUM_SRC, 'third_party/modp_b64',
      'src/third_party/modp_b64@271365'),
-    ('third_party/tcmalloc', 'chromium/src', CHROMIUM_SRC, 'third_party/tcmalloc',
-     'src/third_party/tcmalloc@271365'),
+    # Not fetched. Only base/allocator/allocator.gyp's 'tcmalloc_dir' refers to
+    # it, and the allocator target is not in anything Sawbuck builds.
+    # ('third_party/tcmalloc', 'chromium/src', CHROMIUM_SRC, 'third_party/tcmalloc',
+    #  'src/third_party/tcmalloc@271365'),
     # Not in DEPS.sawbuck -- see NOT_IN_DEPS below. base.gyp's
     # test_support_base target depends on libxml.gyp, and GYP resolves
     # dependencies at *file* granularity, so loading base.gyp at all requires
@@ -151,12 +155,13 @@ DEPS = [
     ('testing/gmock', 'external/googlemock',
      'd138e25941faa1a80f11a8e4cf2c7636402cc720', None,
      'googlemock/trunk@453 -> r451'),
-    # gyp_revision 1919. Note: this is GYP as it stood in 2014 and is Python 2
-    # only. Modernizing the toolchain means swapping this for gyp-next; the
-    # original is pinned here so the known-good baseline stays reproducible.
-    ('tools/gyp', 'external/gyp',
-     '1a622e23d0c344c55ccac285cab60c2ab991ac9a', None,
-     'gyp/trunk@1919'),
+    # Not fetched. GYP at its original r1919 pin, kept for a while so the
+    # known-good baseline stayed reproducible. That rationale is gone -- the
+    # baseline is Chromium 49 now -- and it is Python 2 only, so it cannot run
+    # regardless. gyp-next below is what generates the build.
+    # ('tools/gyp', 'external/gyp',
+    #  '1a622e23d0c344c55ccac285cab60c2ab991ac9a', None,
+    #  'gyp/trunk@1919'),
     # The GYP actually used to generate, since tools/gyp cannot run here.
     ('tools/gyp-next', 'github:nodejs/gyp-next', GYP_NEXT_VERSION, None,
      'gyp-next %s (added; replaces tools/gyp under Python 3)' % GYP_NEXT_VERSION),

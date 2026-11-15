@@ -138,19 +138,25 @@ deps = {
     '{chromium_git}/chromium/deps/icu46.git@{icu_revision}',
   'third_party/modp_b64':
     '{chromium_git}/chromium/src/third_party/modp_b64.git@{modp_b64_revision}',
-  # Only the 'chromium' subdirectory, which is the one path
-  # base/allocator/allocator.gyp refers to. The sibling 'vendor' copy of
-  # gperftools is not used by the build and has no faithful mirror.
-  'third_party/tcmalloc/chromium':
-    '{chromium_git}/chromium/src/third_party/tcmalloc/chromium.git@{tcmalloc_revision}',
+  # Not fetched. The only thing that refers to it is
+  # base/allocator/allocator.gyp's 'tcmalloc_dir', and the allocator target is
+  # not in anything Sawbuck builds -- removing it loses no targets at all.
+  # Commented rather than dropped so the pin survives; it was the 'chromium'
+  # subdirectory only, which is the one path allocator.gyp uses (the sibling
+  # 'vendor' copy of gperftools is unused and has no faithful mirror).
+  # 'third_party/tcmalloc/chromium':
+  #   '{chromium_git}/chromium/src/third_party/tcmalloc/chromium.git@{tcmalloc_revision}',
   # Not in the original DEPS; required to generate at all. See note 3 above.
   'third_party/libxml':
     '{chromium_git}/chromium/src/third_party/libxml.git@{libxml_revision}',
 
   'build':
     '{chromium_git}/chromium/src/build.git@{build_revision}',
-  'tools/win':
-    '{chromium_git}/chromium/src/tools/win.git@{tools_win_revision}',
+  # Not fetched. Windows dev utilities (ChromeDebug, DebugVisualizers,
+  # link_limiter, sizeviewer, split_link, static_initializers); nothing in the
+  # tree references any of them, and it was the largest item here by line count.
+  # 'tools/win':
+  #   '{chromium_git}/chromium/src/tools/win.git@{tools_win_revision}',
 
   # Supplies gtest.gyp and gmock.gyp -- the build files, not the sources, which
   # come from the two standalone repositories below.
@@ -161,20 +167,21 @@ deps = {
   'testing/gtest':
     '{chromium_git}/external/googletest.git@{gtest_revision}',
 
-  # This brings in GYP. Kept at its original pin so the known-good baseline
-  # stays reproducible -- but note it is Python 2 only and therefore cannot
-  # run any more. gyp-next below is what actually generates the build.
-  'tools/gyp':
-    '{chromium_git}/external/gyp.git@{gyp_revision}',
+  # Not fetched. This was GYP at its original r1919 pin, kept for a while so
+  # the known-good baseline stayed reproducible. That rationale is gone: the
+  # baseline is Chromium 49 now, and this GYP is Python 2 only so it cannot run
+  # regardless. gyp-next below is what generates the build.
+  # 'tools/gyp':
+  #   '{chromium_git}/external/gyp.git@{gyp_revision}',
   # The maintained GYP line, and the only one that runs under Python 3. It
   # generates Sawbuck's graph unmodified. Driven by tools/gyp_sawbuck.py.
   'tools/gyp-next':
     '{github_git}/nodejs/gyp-next.git@{gyp_next_revision}',
 
-  # This brings in code coverage tools, like croc. This is required for our
-  # coverage generation.
-  'tools/code_coverage':
-    '{chromium_git}/chromium/src/tools/code_coverage.git@{code_coverage_revision}',
+  # Not fetched. This brought in code coverage tools, like croc, for coverage
+  # generation -- never for building. Nothing references it.
+  # 'tools/code_coverage':
+  #   '{chromium_git}/chromium/src/tools/code_coverage.git@{code_coverage_revision}',
 }
 
 # Deliberately dropped from the old file:
