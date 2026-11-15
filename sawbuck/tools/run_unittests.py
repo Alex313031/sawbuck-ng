@@ -86,7 +86,13 @@ def RunOneTest(exe_path, target, exceptions):
       return False
   else:
     print("running test ", target)
-    retval = subprocess.call(test_path)
+    try:
+      retval = subprocess.call(test_path)
+    except OSError as err:
+      # subprocess raises if the binary is missing or cannot be launched.
+      # Report that as a failed target rather than a traceback.
+      print("*** FAILED TO LAUNCH *** %s: %s" % (test_path, err))
+      return False
 
   return retval == 0
 
@@ -138,17 +144,25 @@ def Main():
         parser.error('each exception must be of the format '
             '"regexp, layer, stopcode"')
 
-  succeeded = True
+  failed = []
   for test in args:
     if not RunOneTest(options.exe_dir, test, exceptions):
-      succeeded = False
+      failed.append(test)
 
-  if succeeded:
-    f = file(options.success_file, 'w')
-    f.write(str(datetime.datetime.now()))
+  if not failed:
+    # Was file(), a Python 2 builtin removed in Python 3 -- which made this
+    # fail even when every test passed, and the only symptom was the build
+    # reporting a non-zero exit with nothing to go on.
+    with open(options.success_file, 'w') as f:
+      f.write(str(datetime.datetime.now()))
     return 0
-  else:
-    return 1
+
+  # Name the failures. Otherwise all a build reports is the exit code.
+  print('')
+  print('%d of %d test target(s) FAILED:' % (len(failed), len(args)))
+  for test in failed:
+    print('    %s' % test)
+  return 1
 
 
 VERIFIER_MESSAGE = '''\
