@@ -31,7 +31,8 @@ void Foo() {
 }
 
 void QuitMessageLoop(base::MessageLoop* loop) {
-  loop->PostTask(FROM_HERE, base::MessageLoop::QuitClosure());
+  loop->PostTask(FROM_HERE,
+                 base::MessageLoop::QuitWhenIdleClosure());
 }
 
 class SymbolLookupServiceTest: public testing::Test {
@@ -54,7 +55,7 @@ class SymbolLookupServiceTest: public testing::Test {
     base::Time now(base::Time::Now());
 
     MODULEENTRY32 module = { sizeof(module) };
-    ASSERT_TRUE(::Module32First(snap, &module));
+    ASSERT_TRUE(::Module32First(snap.Get(), &module));
     do {
       base::win::PEImage image(module.hModule);
       ASSERT_TRUE(image.VerifyMagic());
@@ -72,7 +73,7 @@ class SymbolLookupServiceTest: public testing::Test {
 
       service_.OnModuleLoad(::GetCurrentProcessId(), now, module_info);
 
-    } while (::Module32Next(snap, &module));
+    } while (::Module32Next(snap.Get(), &module));
   }
 
   void ResolveAll() {

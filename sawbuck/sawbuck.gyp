@@ -24,7 +24,14 @@
         'common/common.gyp:*',
         'installer/installer.gyp:*',
         'log_lib/log_lib.gyp:*',
-        'py/py.gyp:*',
+        # 'py/py.gyp:*' is deliberately absent. It builds the Python ETW
+        # bindings as a py2.6 egg, via the vendored setuptools 0.6c11 and the
+        # bundled Python 2.6 that DEPS no longer fetches. The package itself is
+        # still Python 2 as well, evntrace.py included. Porting it is real work
+        # and nothing else here depends on it, so it is out of the build until
+        # then. Note that dropping it from here means GYP no longer loads
+        # py/py.gyp at all, so the target is not generated into the solution
+        # either; run GYP against py/py.gyp directly if you need it.
         'sym_util/sym_util.gyp:*',
         'viewer/viewer.gyp:*',
       ],
@@ -65,7 +72,11 @@
             '<(success_file)',
           ],
           'action': [
-            '<(DEPTH)/third_party/python_26/python',
+            # Was third_party/python_26/python, a bundled Python 2.6 that DEPS
+            # no longer fetches and that has no googlesource mirror. The
+            # scripts this runs are Python 3 now, so use whatever python is on
+            # PATH -- which is what viewer.gyp's sawbuck_version does too.
+            'python',
             'tools/run_unittests.py',
             '--exe-dir=<(PRODUCT_DIR)\\.',
             '--success-file=<(success_file)',

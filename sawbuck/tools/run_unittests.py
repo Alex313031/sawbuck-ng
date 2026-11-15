@@ -72,20 +72,20 @@ def RunOneTest(exe_path, target, exceptions):
 
   if verifier.HasAppVerifier():
     test_path += '.exe'
-    print "running test with appverifier ", target
+    print("running test with appverifier ", target)
     (retval, errors) = verifier.RunTestWithVerifier(test_path)
 
     errors = FilterAppVerifierExceptions(errors, exceptions)
     if errors and len(errors):
-      print "Application Verifier errors:\n\n"
+      print("Application Verifier errors:\n\n")
       for error in errors:
-        print "*** ERROR ***"
-        print error
+        print("*** ERROR ***")
+        print(error)
 
       # Return failure on app verifier errors.
       return False
   else:
-    print "running test ", target
+    print("running test ", target)
     retval = subprocess.call(test_path)
 
   return retval == 0
@@ -160,5 +160,5 @@ See [http://www.google.com/search?q=application+verifier+download].
 
 if __name__ == '__main__':
   if not verifier.HasAppVerifier():
-    print VERIFIER_MESSAGE
+    print(VERIFIER_MESSAGE)
   sys.exit(Main())

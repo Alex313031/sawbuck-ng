@@ -20,22 +20,30 @@ import re
 import subprocess
 import sys
 import tempfile
-import win32com.client.gencache as gencache
+try:
+  import win32com.client.gencache as gencache
+except ImportError:
+  # pywin32 is not installed. Application Verifier is optional -- see
+  # HasAppVerifier() and VERIFIER_MESSAGE in run_unittests.py -- so fall
+  # through and let VerifierLib end up None below, which is the same state as
+  # "Application Verifier is not installed". Without this, the module-level
+  # import made an optional feature a hard requirement.
+  gencache = None
 import xml.sax
 import xml.sax.handler
 
 
-TRACE_RE_ = re.compile('(?P<module>\w+)'  # Module
-    '(?:'
-      '!'  # Separator
-      '(?P<symbol>[^\+]+)'  # Symbol
-      '(?:\+(?P<offset>[0-9a-f]+))?'  # Optional hex offset
-    ')?'  # Sometimes we only get a module
-    '(?:\s+\('  # Optional file and line
-      '(?P<file>[^@]*)'  # file
-      '\s+@\s*'
-      '(?P<line>\d+)'  # line
-    '\))?'
+TRACE_RE_ = re.compile(r'(?P<module>\w+)'  # Module
+    r'(?:'
+      r'!'  # Separator
+      r'(?P<symbol>[^\+]+)'  # Symbol
+      r'(?:\+(?P<offset>[0-9a-f]+))?'  # Optional hex offset
+    r')?'  # Sometimes we only get a module
+    r'(?:\s+\('  # Optional file and line
+      r'(?P<file>[^@]*)'  # file
+      r'\s+@\s*'
+      r'(?P<line>\d+)'  # line
+    r'\))?'
     , re.I)
 
 
@@ -174,7 +182,7 @@ class AppverifierTestRunner:
         stop.ErrorFlags = error_flags
     except:  # pylint: disable=W0702
       # Accessing or enumerating Stops fails for some checks.
-      print 'Exception setting options for check', check.Name
+      print('Exception setting options for check', check.Name)
 
   def ResetImage(self, image_name):
     '''Removes all verifier settings for image_name.
@@ -300,13 +308,13 @@ class AppverifierTestRunner:
 
   def DumpImages_(self):
     for image in self.manager.Images:
-      print image.Name
+      print(image.Name)
       for check in image.Checks:
-        print '\t', check.Name, check.Enabled
+        print('\t', check.Name, check.Enabled)
 
   def DumpLogs_(self, image_name):
     for l in self.manager.Logs(image_name):
-      print l
+      print(l)
 
 
 def RunTestWithVerifier(test_path, break_on_stop = False):
@@ -331,7 +339,7 @@ def Main():
   for test in sys.argv[1:]:
     (dummy_exit_code, errors) = RunTestWithVerifier(test)
     for error in errors:
-      print error
+      print(error)
 
 
 if __name__ == '__main__':
