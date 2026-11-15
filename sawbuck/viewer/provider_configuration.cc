@@ -30,6 +30,12 @@ bool ProviderConfiguration::ReadProviders() {
   settings_.clear();
 
   CRegKey providers;
+  // Every Open on this read path passes KEY_READ explicitly. ATL's
+  // CRegKey::Open defaults samDesired to KEY_READ | KEY_WRITE, and asking for
+  // write access under HKEY_LOCAL_MACHINE fails with ERROR_ACCESS_DENIED
+  // unless the process is elevated. Sawbuck.exe always is -- its manifest sets
+  // requireAdministrator -- so this only ever surfaced in the unit tests,
+  // which are not elevated, as "Error opening provider key <guid>, 5".
   LONG err = providers.Open(HKEY_LOCAL_MACHINE,
                             config::kProviderNamesKey,
                             KEY_READ);
@@ -57,7 +63,7 @@ bool ProviderConfiguration::ReadProviders() {
 
     // Open the provider key, read its name etc.
     CRegKey provider;
-    err = provider.Open(providers, tmp_string);
+    err = provider.Open(providers, tmp_string, KEY_READ);
     if (err != ERROR_SUCCESS) {
       LOG(ERROR) << "Error opening provider key " << tmp_string << ", " << err;
       continue;
@@ -87,7 +93,7 @@ bool ProviderConfiguration::ReadProviders() {
 
     // Read the flags names and value.
     CRegKey flags;
-    err = flags.Open(provider, config::kProviderFlagsKey);
+    err = flags.Open(provider, config::kProviderFlagsKey, KEY_READ);
     if (err != ERROR_SUCCESS)
       continue;
 
@@ -102,7 +108,7 @@ bool ProviderConfiguration::ReadProviders() {
       }
 
       CRegKey flag;
-      err = flag.Open(flags, tmp_string);
+      err = flag.Open(flags, tmp_string, KEY_READ);
       if (err != ERROR_SUCCESS) {
         LOG(ERROR) << "Error reading opening flag "
             << tmp_string << ", " << err;
