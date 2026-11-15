@@ -133,6 +133,18 @@ def main():
         # On a non-Windows host GYP would otherwise infer OS=linux, and
         # common.gypi would configure a build Sawbuck has no sources for.
         '-D', 'OS=win',
+        # We build with MSVC only. common.gypi sets host_clang to 1
+        # unconditionally ("Always do this by default"), and then shells out to
+        # tools/clang/scripts/update.py for a CR_CLANG_REVISION define -- a
+        # directory DEPS does not fetch. Stating that we do not use clang is
+        # better than adding the dependency or patching the call out.
+        #
+        # These are command-line defines rather than '%' defaults in
+        # sawbuck.gypi deliberately: command-line values take precedence
+        # everywhere, whereas a '%' default loses to common.gypi's own nested
+        # declaration in any .gyp that brings its own 'variables' block.
+        '-D', 'clang=0',
+        '-D', 'host_clang=0',
         # Carried over from the DEPS.sawbuck hook.
         '--no-circular-check',
     ]

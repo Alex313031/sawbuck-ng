@@ -44,6 +44,11 @@
     # overwrite anything set there. ICU is the case in point: it kept /WX and
     # died on a warning in uresbund.c while first-party code built fine.
     'win_third_party_warn_as_error%': 'false',
+
+    # NOTE: clang/host_clang are NOT set here. They have to be command-line
+    # defines -- see tools/gyp_sawbuck.py -- because a '%' default declared
+    # here loses to common.gypi's own nested declaration in any .gyp that
+    # brings its own 'variables' block, third_party/pcre/pcre.gyp among them.
   },
 
   # NOTE: GYP applies this file to *every* .gyp in the tree (it is passed with

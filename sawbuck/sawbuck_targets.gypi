@@ -42,16 +42,19 @@
         #     CShellFileSaveDialog and the FOS_* flags, which the SDK declares
         #     only from NTDDI_VISTA up.
         #
-        # build/common.gypi targets Windows 8 (_WIN32_WINNT=0x0602,
-        # WINVER=0x0602, NTDDI_VERSION=0x06020000). Those have to be removed
-        # before ours are added: two /D flags for the same macro with different
-        # values is a redefinition, and this build compiles with
-        # warnings-as-errors. 'defines!' is GYP's exclusion list -- every entry
-        # is removed from the target's merged 'defines'.
+        # build/common.gypi sets its own Windows version, which has to be
+        # removed before ours is added: two /D flags for the same macro with
+        # different values is a redefinition. 'defines!' is GYP's exclusion
+        # list -- every entry is removed from the target's merged 'defines'.
+        #
+        # The values below must match what common.gypi actually sets, or the
+        # exclusion silently does nothing and both end up on the command line.
+        # Chromium 49 targets Windows 10 (0x0A00); the previous M37 pin
+        # targeted Windows 8 (0x0602). Re-check this when moving pins.
         'defines!': [
-          '_WIN32_WINNT=0x0602',
-          'WINVER=0x0602',
-          'NTDDI_VERSION=0x06020000',
+          '_WIN32_WINNT=0x0A00',
+          'WINVER=0x0A00',
+          'NTDDI_VERSION=0x0A000000',
         ],
         'defines': [
           '_WIN32_WINNT=0x0600',

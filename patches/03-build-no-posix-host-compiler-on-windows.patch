@@ -1,0 +1,45 @@
+Do not look for a POSIX host compiler on Windows.
+
+common.gypi picks host_cc/host_cxx like this:
+
+  ['host_clang==1', { 'host_cc': '<(make_clang_dir)/bin/clang', ... },
+                    { 'host_cc': '<!(which gcc)', ... }]
+
+Upstream never reaches the else branch on Windows, because host_clang defaults
+to 1 there. We set host_clang=0 (see tools/gyp_sawbuck.py -- we build with MSVC
+and do not want the CR_CLANG_REVISION lookup into tools/clang, which DEPS does
+not fetch), so we land in it, and GYP shells out to 'which gcc'. On a machine
+with no gcc on PATH that returns non-zero and generation fails outright:
+
+  gyp: Call to 'which gcc' returned exit status 1 while in sawbuck/sawbuck.gyp
+
+host_cc and host_cxx are not used by any target Sawbuck builds; they exist for
+cross-compiles that need a host toolchain. So on Windows they are set empty,
+and the original lookup is kept for every other host.
+
+--- a/build/common.gypi
++++ b/build/common.gypi
+@@ -2444,8 +2444,21 @@
+         'host_cc': '<(make_clang_dir)/bin/clang',
+         'host_cxx': '<(make_clang_dir)/bin/clang++',
+       }, {
+-        'host_cc': '<!(which gcc)',
+-        'host_cxx': '<!(which g++)',
++        'conditions': [
++          ['OS=="win"', {
++            # PATCHED: there is no POSIX host compiler on Windows, and
++            # host_cc/host_cxx are not used by anything we build. Upstream
++            # never reaches this branch because host_clang defaults to 1; we
++            # set it to 0 (see tools/gyp_sawbuck.py), so without this GYP
++            # shells out to 'which gcc' and generation fails outright on any
++            # machine that has no gcc on PATH.
++            'host_cc': '',
++            'host_cxx': '',
++          }, {
++            'host_cc': '<!(which gcc)',
++            'host_cxx': '<!(which g++)',
++          }],
++        ],
+       }],
+ 
+       # The seccomp-bpf sandbox is only supported on five architectures

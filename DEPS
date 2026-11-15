@@ -65,10 +65,32 @@ vars = {
   'chromium_git': 'https://chromium.googlesource.com',
   'github_git': 'https://github.com',
 
-  # Chromium per-directory mirrors, all pinned to SVN r271365. The dates are
-  # the pinned commit's own date; see note 1 above.
-  'base_revision': '26cfa60ca6f473a3bb426cea02a7d643ea795089',            # 2014-05-19
-  'build_revision': '294439de90427eb89e5f1bb23c8daa95b8350395',           # 2014-05-19
+  # base and build are pinned to Chromium 49, the rest to SVN r271365 (M37).
+  #
+  # M49 is the last Chromium that supported Windows XP, and it is still
+  # entirely GYP -- there is no build/BUILD.gn at that revision -- so it clears
+  # both constraints at once. It is also newer about the toolchain: M49 targets
+  # the Windows 10 SDK and the Win10 API level, where M37 targeted SDK 8.0.
+  #
+  # These two are the Chromium 49 *branch point*,
+  # chromium/src 92d77538a86529ca35f9220bd3cd512cbea1f086 = master@{#369907},
+  # not the 49.0.2623.112 release. The difference is deliberate and forced:
+  # the per-directory mirrors carry refs/branch-heads only up to 2372, so
+  # branch 2623 is not in them, and git cannot check out a subdirectory of
+  # chromium/src. base and build both did pick up changes on the M49
+  # stabilization branch (their release trees differ from the branch point's),
+  # so if those ever matter, tools/sync_deps.py can fetch the exact release
+  # trees through Gitiles' archive endpoint.
+  #
+  # Both were resolved two ways that agree: the mirror commits' own
+  # Cr-Original-Commit-Position footers (#369906, the newest at or below the
+  # branch point), and a tree-hash comparison against
+  # chromium/src@92d77538:{base,build}.
+  'base_revision': '7b907946fe89fbdb5ceab832a6c960b11aeb2437',            # 2016-01-15, M49
+  'build_revision': '2e175f8fb88446c0bd4999bb5ab24677ddce63b6',           # 2016-01-15, M49
+
+  # Still M37 (SVN r271365). The dates are the pinned commit's own date; see
+  # note 1 above.
   'testing_revision': 'cbc76319f284b6ab55fd1f36a954afea7f8aac03',         # 2014-05-16
   # Not fetched; see the commented-out google_apis entry below. The resolved
   # pin is kept here so restoring it needs no re-resolving.

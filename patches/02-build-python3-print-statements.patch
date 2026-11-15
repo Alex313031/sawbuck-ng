@@ -1,0 +1,36 @@
+Make the build/ scripts GYP invokes Python 3 compatible.
+
+GYP calls two scripts out of build/ during generation, and both are Python 2:
+
+  build/win_is_xtree_patched.py   via <!pymod_do_main(win_is_xtree_patched)>,
+                                  unconditionally (common.gypi sets
+                                  msvs_xtree_patched from it)
+  build/win/use_ansi_codes.py     via <!(python ...) inside a condition
+                                  *expression*, which GYP expands before it
+                                  evaluates the condition -- so this runs even
+                                  though the condition itself is clang==1 and
+                                  we build with MSVC
+
+Each needs only its print statement parenthesised. Note the first fails even
+though the offending line sits under `if __name__ == '__main__'`: pymod_do_main
+imports the module, so the SyntaxError aborts the whole compile.
+
+Python 2 reached end of life in 2020 and is not available here; see
+tools/gyp_sawbuck.py for the rest of the Python 3 story.
+
+--- a/build/win_is_xtree_patched.py
++++ b/build/win_is_xtree_patched.py
+@@ -23,4 +23,4 @@
+ 
+ 
+ if __name__ == '__main__':
+-  print DoMain([])
++  print(DoMain([]))
+--- a/build/win/use_ansi_codes.py
++++ b/build/win/use_ansi_codes.py
+@@ -7,4 +7,4 @@
+ import os
+ 
+ # Add more terminals here as needed.
+-print 'ANSICON' in os.environ
++print('ANSICON' in os.environ)

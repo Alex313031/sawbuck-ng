@@ -76,6 +76,15 @@ GITILES = 'https://chromium.googlesource.com'
 # Chromium src @ SVN r271365 == git 80d0cd87 == 37.0.2002.0 (M37 trunk, 2014-05-19).
 CHROMIUM_SRC = '80d0cd877a17c0678363b392b5d92403c15f1848'
 
+# base/ and build/ are pinned newer: the Chromium 49 branch point,
+# master@{#369907}. M49 is the last Chromium that supported Windows XP and is
+# still entirely GYP. Fetching these by subpath from chromium/src gives the
+# same trees DEPS gets from the per-directory mirrors -- verified by tree hash
+# -- and unlike git, Gitiles' archive endpoint can also reach the
+# 49.0.2623.112 release commit (4ec79b7f) if the stabilization-branch changes
+# to base/ and build/ ever turn out to matter.
+CHROMIUM_SRC_M49 = '92d77538a86529ca35f9220bd3cd512cbea1f086'
+
 # GYP itself. The pinned tools/gyp below is r1919, which is Python 2 only, and
 # no Python 2 is available any more. gyp-next is the maintained successor and
 # the only actively developed GYP line; it generates Sawbuck's whole graph
@@ -90,11 +99,13 @@ GYP_NEXT_VERSION = 'v0.22.4'
 # A repo of the form 'github:owner/name' is fetched from GitHub's release
 # tarballs instead of Gitiles, with 'commit' naming a tag.
 DEPS = [
+    # --- From chromium/src at the Chromium 49 branch point. ---
+    ('base', 'chromium/src', CHROMIUM_SRC_M49, 'base',
+     'M49 branch point, master@{#369907}'),
+    ('build', 'chromium/src', CHROMIUM_SRC_M49, 'build',
+     'M49 branch point, master@{#369907}'),
+
     # --- From chromium/src at the pinned chrome_revision (SVN r271365). ---
-    ('base', 'chromium/src', CHROMIUM_SRC, 'base',
-     'src/base@271365'),
-    ('build', 'chromium/src', CHROMIUM_SRC, 'build',
-     'src/build@271365'),
     # Vestigial, so not fetched -- nothing in the tree references google_apis
     # and generation succeeds without it. Left here, commented, so the pin
     # survives if it turns out to be needed. Also commented out in DEPS.
