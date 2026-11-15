@@ -188,7 +188,12 @@ std::vector<Filter> Filter::DeserializeFilters(const std::string& stored) {
   scoped_ptr<base::ListValue> filter_list_value;
 
   if (!stored.empty()) {
-    scoped_ptr<base::Value> parsed_value(base::JSONReader::Read(stored, true));
+    // The second parameter used to be a bool allow_trailing_comma; it is now
+    // an options bitmask. JSON_ALLOW_TRAILING_COMMAS happens to be 1, so the
+    // old 'true' still compiled and meant the same thing -- spelled out here
+    // so it stays that way deliberately rather than by coincidence.
+    scoped_ptr<base::Value> parsed_value(
+        base::JSONReader::Read(stored, base::JSON_ALLOW_TRAILING_COMMAS));
     if (parsed_value.get() && parsed_value->IsType(base::Value::TYPE_LIST)) {
       filter_list_value.reset(
           static_cast<base::ListValue*>(parsed_value.release()));
@@ -221,7 +226,7 @@ std::string Filter::SerializeFilters(const std::vector<Filter>& filters) {
       SerializeFiltersToListValue(filters));
   std::string serialized_string;
   base::JSONWriter::WriteWithOptions(
-      filters_list.get(),
+      *filters_list,
       base::JSONWriter::OPTIONS_PRETTY_PRINT,
       &serialized_string);
   return serialized_string;

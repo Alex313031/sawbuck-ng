@@ -18,7 +18,7 @@
 
 #include <atldlgs.h>
 
-#include "base/file_util.h"
+#include "base/files/file_util.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "pcrecpp.h"  // NOLINT
@@ -41,8 +41,8 @@ const wchar_t* FilterListView::kColumnWidthValueName =
     config::kFilterViewColumnWidths;
 
 FilterListView::FilterListView() {
-  COMPILE_ASSERT(arraysize(kColumns) == COL_MAX,
-                 wrong_number_of_column_info);
+  static_assert(arraysize(kColumns) == COL_MAX,
+                "wrong number of column info");
 }
 
 // Filter dialog control constants:

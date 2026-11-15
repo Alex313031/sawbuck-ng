@@ -15,7 +15,6 @@
 // Log consumer implementation.
 #include "sawbuck/log_lib/log_consumer.h"
 
-#include "base/debug/trace_event_win.h"
 #include "base/logging.h"
 #include "base/logging_win.h"
 #include "sawbuck/common/buffer_parser.h"
@@ -33,7 +32,7 @@ bool LogParser::ProcessOneEvent(EVENT_TRACE* event) {
   // Is it a log message?
   if (event->Header.Guid == logging::kLogEventId) {
     return ParseLogEvent(event);
-  } else if (event->Header.Guid == base::debug::kTraceEventClass32) {
+  } else if (event->Header.Guid == kTraceEventClass32) {
     return ParseTraceEvent(event);
   }
 
@@ -122,9 +121,9 @@ bool LogParser::ParseTraceEvent(EVENT_TRACE* event) {
     return false;
 
   switch (event->Header.Class.Type) {
-    case base::debug::kTraceEventTypeBegin:
-    case base::debug::kTraceEventTypeEnd:
-    case base::debug::kTraceEventTypeInstant:
+    case kTraceEventTypeBegin:
+    case kTraceEventTypeEnd:
+    case kTraceEventTypeInstant:
       // It's a known type, parse it.
       break;
 
@@ -155,13 +154,13 @@ bool LogParser::ParseTraceEvent(EVENT_TRACE* event) {
     trace.id = *id;
 
     switch (event->Header.Class.Type) {
-      case base::debug::kTraceEventTypeBegin:
+      case kTraceEventTypeBegin:
         trace_event_sink_->OnTraceEventBegin(trace);
         break;
-      case base::debug::kTraceEventTypeEnd:
+      case kTraceEventTypeEnd:
         trace_event_sink_->OnTraceEventEnd(trace);
         break;
-      case base::debug::kTraceEventTypeInstant:
+      case kTraceEventTypeInstant:
         trace_event_sink_->OnTraceEventInstant(trace);
         break;
       default:

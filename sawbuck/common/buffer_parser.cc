@@ -40,7 +40,7 @@ bool GetStringAtImpl(BinaryBufferParser* parser, size_t pos,
 }  // namespace
 
 BinaryBufferParser::BinaryBufferParser(const void* data, size_t data_len)
-    : data_(reinterpret_cast<const int8*>(data)), data_len_(data_len) {
+    : data_(reinterpret_cast<const int8_t*>(data)), data_len_(data_len) {
 }
 
 bool BinaryBufferParser::Contains(size_t pos, size_t data_len) {

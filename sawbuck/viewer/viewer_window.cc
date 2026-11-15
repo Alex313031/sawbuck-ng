@@ -18,7 +18,7 @@
 #include "pcrecpp.h"  // NOLINT
 #include "base/bind.h"
 #include "base/environment.h"
-#include "base/file_util.h"
+#include "base/files/file_util.h"
 #include "base/logging.h"
 #include "base/path_service.h"
 #include "base/strings/string_util.h"

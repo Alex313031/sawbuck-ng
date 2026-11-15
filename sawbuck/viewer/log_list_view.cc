@@ -15,6 +15,8 @@
 // Log viewer window implementation.
 #include "sawbuck/viewer/log_list_view.h"
 
+#include <stdint.h>
+
 #include <atlalloc.h>
 #include <atlframe.h>
 #include <wmistr.h>
@@ -123,10 +125,10 @@ bool LogViewFormatter::FormatColumn(ILogView* log_view,
             time_delta = -time_delta;
           }
 
-          int64 hours = time_delta.InHours();
-          int64 minutes = time_delta.InMinutes() % 60;
-          int64 seconds = time_delta.InSeconds() % 60;
-          int64 milliseconds = time_delta.InMilliseconds() % 1000;
+          int64_t hours = time_delta.InHours();
+          int64_t minutes = time_delta.InMinutes() % 60;
+          int64_t seconds = time_delta.InSeconds() % 60;
+          int64_t milliseconds = time_delta.InMilliseconds() % 1000;
 
           if (is_negative) {
             *str = StringPrintf("-%02lld:%02lld:%02lld-%03lld",
@@ -177,8 +179,8 @@ LogListView::LogListView(CUpdateUIBase* update_ui)
   context_menu_bar_.LoadMenu(IDR_LIST_VIEW_CONTEXT_MENU);
   context_menu_ = context_menu_bar_.GetSubMenu(0);
 
-  COMPILE_ASSERT(arraysize(kColumns) == COL_MAX,
-                 wrong_number_of_column_info);
+  static_assert(arraysize(kColumns) == COL_MAX,
+                "wrong number of column info");
 }
 
 void LogListView::SetLogView(ILogView* log_view) {

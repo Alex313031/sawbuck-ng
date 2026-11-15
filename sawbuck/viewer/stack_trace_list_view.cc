@@ -45,8 +45,8 @@ const wchar_t* StackTraceListView::kColumnWidthValueName =
 
 StackTraceListView::StackTraceListView(CUpdateUIBase* update_ui)
     : update_ui_(update_ui), lookup_service_(NULL), pid_(0) {
-  COMPILE_ASSERT(arraysize(kColumns) == COL_MAX,
-                 wrong_number_of_column_names);
+  static_assert(arraysize(kColumns) == COL_MAX,
+                "wrong number of column names");
 }
 
 void StackTraceListView::SetSymbolLookupService(

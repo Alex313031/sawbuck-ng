@@ -75,7 +75,7 @@ TEST(ModuleCacheTest, Insert) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   base::AtExitManager at_exit;
 
   return RUN_ALL_TESTS();

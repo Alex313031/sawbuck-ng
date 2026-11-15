@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
 
   base::AtExitManager at_exit;
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
 
   return RUN_ALL_TESTS();
 }

@@ -1,0 +1,48 @@
+Reinstate win_third_party_warn_as_error.
+
+Chromium 37 had a win_third_party_warn_as_error variable controlling
+warnings-as-errors for third-party code. Chromium 49 dropped it and hardcoded
+'WarnAsError': 'true' instead.
+
+That setting lives in a target_conditions block, and target_conditions are
+evaluated per target *after* target_defaults has been merged in -- so they
+overwrite anything a project sets there. The result is that a project embedding
+Chromium's build cannot turn third-party warnings-as-errors off at all, and any
+warning MSVC has added since 2016 becomes a hard error in code the project does
+not own. ICU is the case in point:
+
+  error C2220: the following warning is treated as an error
+  third_party/icu/source/common/uresbund.c(969)
+
+This restores the variable, keeping upstream's 'true' as the default so
+behaviour is unchanged unless a project overrides it. Sawbuck sets it to
+'false' in sawbuck/sawbuck.gypi while the VS2022 port is in progress; the
+first-party equivalent is sawbuck_warn_as_error, next to it.
+
+--- a/build/common.gypi
++++ b/build/common.gypi
+@@ -1184,6 +1184,11 @@
+     'component%': '<(component)',
+     'win_analyze%': '<(win_analyze)',
+     'win_fastlink%': '<(win_fastlink)',
++
++    # PATCHED: reinstated. Chromium 37 had this variable and Chromium 49
++    # dropped it, hardcoding WarnAsError for third-party code instead. See the
++    # use site below.
++    'win_third_party_warn_as_error%': 'true',
+     'enable_resource_whitelist_generation%': '<(enable_resource_whitelist_generation)',
+     'use_titlecase_in_grd%': '<(use_titlecase_in_grd)',
+     'remoting%': '<(remoting)',
+@@ -3153,7 +3158,11 @@
+             'msvs_settings': {
+               'VCCLCompilerTool': {
+                 'WarningLevel': '3',
+-                'WarnAsError': 'true',
++                # PATCHED: was hardcoded 'true'. This block sits in
++                # target_conditions, which are evaluated per target *after*
++                # target_defaults is merged, so it overwrites anything set
++                # there -- a project cannot turn it off without this variable.
++                'WarnAsError': '<(win_third_party_warn_as_error)',
+                 'Detect64BitPortabilityProblems': 'false',
+               },
+             },

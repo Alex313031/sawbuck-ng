@@ -304,9 +304,9 @@ int Error(const std::wstring& error) {
 
 int wmain(int argc, const wchar_t** argv) {
   base::AtExitManager at_exit;
-  CommandLine::Init(0, NULL);
+  base::CommandLine::Init(0, NULL);
 
-  CommandLine* cmd_line = CommandLine::ForCurrentProcess();
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   std::vector<std::wstring> args = cmd_line->GetArgs();
   DumpLogConsumer consumer;
   for (size_t i = 0; i < args.size(); ++i) {

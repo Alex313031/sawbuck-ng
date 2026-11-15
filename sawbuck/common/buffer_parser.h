@@ -16,7 +16,9 @@
 #ifndef SAWBUCK_COMMON_BUFFER_PARSER_H_
 #define SAWBUCK_COMMON_BUFFER_PARSER_H_
 
-#include "base/basictypes.h"
+#include <stdint.h>
+
+#include "base/macros.h"
 
 // A binary buffer parser
 class BinaryBufferParser {
@@ -70,7 +72,7 @@ class BinaryBufferParser {
   bool GetStringAt(size_t pos, const wchar_t** ptr, size_t* len);
 
  protected:
-  const int8* data_;
+  const int8_t* data_;
   size_t data_len_;
 };
 

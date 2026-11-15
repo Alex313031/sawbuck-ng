@@ -31,6 +31,7 @@
       'target_name': 'log_lib',
       'type': 'static_library',
       'sources': [
+        'etw_constants.h',
         'kernel_log_consumer.cc',
         'kernel_log_consumer.h',
         'log_consumer.cc',

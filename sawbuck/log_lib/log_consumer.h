@@ -18,6 +18,7 @@
 
 #include "base/time/time.h"
 #include "base/win/event_trace_consumer.h"
+#include "sawbuck/log_lib/etw_constants.h"
 
 struct LogMessageBase {
   LogMessageBase() : level(0), process_id(0), thread_id(0), trace_depth(0),

@@ -62,14 +62,14 @@ class HybridMessageLoopObserver
   // @name base::MessagePumpDispatcher implementation.
   // Implemented to hook in WTL PreTranslateMessage.
   // @{
-  virtual uint32_t Dispatch(const base::NativeEvent& event) OVERRIDE;
+  virtual uint32_t Dispatch(const base::NativeEvent& event) override;
   // @}
 
   // @name base::MessageLoop::TaskObserver implementation.
   // Implemented to keep a task out for WTL idle processing.
   // @{
-  virtual void WillProcessTask(const base::PendingTask& pending_task) OVERRIDE;
-  virtual void DidProcessTask(const base::PendingTask& pending_task) OVERRIDE;
+  virtual void WillProcessTask(const base::PendingTask& pending_task) override;
+  virtual void DidProcessTask(const base::PendingTask& pending_task) override;
   // @}
 
  private:
@@ -121,7 +121,7 @@ int APIENTRY wWinMain(HINSTANCE instance,
                       HINSTANCE prev_instance,
                       LPTSTR /*cmd_line*/,
                       int show) {
-  CommandLine::Init(0, NULL);
+  base::CommandLine::Init(0, NULL);
   base::AtExitManager at_exit;
 
   // Initialize ICU.
@@ -151,7 +151,7 @@ int APIENTRY wWinMain(HINSTANCE instance,
   window.ShowWindow(show);
   window.UpdateWindow();
 
-  CommandLine* cmd_line = CommandLine::ForCurrentProcess();
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   if (cmd_line->HasSwitch("import")) {
     std::vector<std::wstring> files(cmd_line->GetArgs());
     std::vector<base::FilePath> paths;
