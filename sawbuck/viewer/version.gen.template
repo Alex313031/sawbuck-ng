@@ -20,6 +20,11 @@
 #define SAWBUCK_BUILD ${BUILD}
 #define SAWBUCK_PATCH ${PATCH}
 
-// Version string.
+// Version string, comma separated. This is the form VERSIONINFO expects, and
+// is what version.rc puts in the FileVersion and ProductVersion fields.
 #define SAWBUCK_VER_STR "${MAJOR}, ${MINOR}, ${BUILD}, ${PATCH}"
+
+// Version string, dotted. The same thing in the form people actually read;
+// used by the About dialog in viewer.rc.
+#define SAWBUCK_VER_STR_DOTTED "${MAJOR}.${MINOR}.${BUILD}.${PATCH}"
 

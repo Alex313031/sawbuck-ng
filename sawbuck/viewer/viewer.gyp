@@ -217,6 +217,13 @@
       ],
       'dependencies': [
         'copy_dlls',
+        # viewer.rc is in this target's sources too, and it includes
+        # sawbuck_version.h -> version.gen, which this target generates into
+        # SHARED_INTERMEDIATE_DIR and puts on the include path of anything
+        # depending on it. Without this the resource compile fails here with
+        # "Cannot open include file: 'version.gen'", even though sawbuck_exe
+        # builds fine.
+        'sawbuck_version',
         'viewer_lib',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/base/base.gyp:base_i18n',
