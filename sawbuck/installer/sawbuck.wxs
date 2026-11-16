@@ -26,10 +26,10 @@ limitations under the License.
       Name='Sawbuck'
       Language='1033'
       Version='$(var.ProductVersion)'
-      Manufacturer='Google Inc'
+      Manufacturer='Alex313031'
       UpgradeCode='$(var.UpgradeCode)' >
-    <Package Description='The Chrome Log Viewer.'
-             Manufacturer='Google Inc'
+    <Package Description='The Chromium Log Viewer.'
+             Manufacturer='Alex313031'
              InstallerVersion='200'
              Compressed='yes' />
 
@@ -93,7 +93,7 @@ limitations under the License.
       This is all boilerplate from WiX docs.
     -->
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT"
-        Value="Launch Sawbuck" />
+        Value="Launch Sawbuck?" />
 
     <Property Id="WixShellExecTarget" Value="[#SawbuckExeFile]" />
     <CustomAction Id="LaunchApplication"
@@ -129,7 +129,7 @@ limitations under the License.
           Guid='{CECB7B52-78A8-4638-BD25-0CFD2F0044DF}'>
         <Shortcut Id='ApplicationStartMenuShortcut'
                   Name='Sawbuck'
-                  Description='The Chrome log viewer.'
+                  Description='The Chromium log viewer.'
                   Target='[SAWBUCKAPPLICATIONDIRECTORY]Sawbuck.exe'
                   WorkingDirectory='SAWBUCKAPPLICATIONDIRECTORY' />
         <RemoveFolder Id='SawbuckProgramsDirectory' On='uninstall' />
@@ -337,12 +337,33 @@ limitations under the License.
             Name='CHROME_ETW_LOGGING'
             Value='1' />
       </Component>
-      <Component Id='Icu42DllComponent'
-          Guid='{A05B341D-E7EA-4067-B459-D7FCC9E495D0}'>
-        <File Id='IcuDllComponent'
-            Name='icudt.dll'
+      <!--
+        ICU's data, as a file rather than a DLL.
+
+        build/common.gypi sets icu_use_data_file_flag to 1, which makes
+        base.gyp compile base with ICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE, so
+        base::i18n::InitializeICU() loads icudtl.dat from the directory
+        holding the executable. icu.gyp's copy_icudtl_dat target puts it
+        beside Sawbuck.exe for a build-tree run; this does the same for an
+        installed one.
+
+        This component used to ship third_party/icu/windows/icudt.dll, which
+        nothing loads; the DLL form is only used when icu_use_data_file_flag
+        is 0. An installed Sawbuck therefore had no ICU data at all.
+
+        The GUID is new on purpose. The component's key path changes, and
+        RemoveExistingProducts runs After InstallFinalize, so the old product
+        is uninstalled *after* the new one is in place: reusing the GUID would
+        have that uninstall operate on a component whose key path had moved
+        under it. A fresh GUID leaves the old component unreferenced, so
+        icudt.dll is removed cleanly and icudtl.dat is never considered.
+      -->
+      <Component Id='IcuDataComponent'
+          Guid='{54A35C00-08A8-4F95-9155-A970D4C52905}'>
+        <File Id='IcuDataFile'
+            Name='icudtl.dat'
             DiskId='1'
-            Source='..\..\third_party\icu\windows\icudt.dll' />
+            Source='..\..\third_party\icu\source\data\in\icudtl.dat' />
       </Component>
 
       <Component Id='DbgHelpDllComponent'
@@ -364,7 +385,7 @@ limitations under the License.
     <!-- Just one feature. No muss no fuss, no UI. -->
     <Feature Id='Sawbuck' Title='Sawbuck Log Viewer' Level='1'>
       <ComponentRef Id='SawbuckExeComponent' />
-      <ComponentRef Id='Icu42DllComponent' />
+      <ComponentRef Id='IcuDataComponent' />
       <ComponentRef Id='SawbuckShortcutComponent' />
       <ComponentRef Id='ProviderRegistryComponent' />
       <ComponentRef Id='DbgHelpDllComponent' />

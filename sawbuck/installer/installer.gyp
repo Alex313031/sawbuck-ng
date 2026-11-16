@@ -74,9 +74,25 @@
         {
           'action_name': 'light',
           'extension': 'wxs',
+          # Everything light reads, not just the wixobj. candle only compiles
+          # the authoring; light is what pulls file contents into the cab and
+          # binds the UI, so a change to any of these has to rebuild the MSI.
+          # Only Sawbuck.exe used to be listed, which meant editing the
+          # licence text or rolling a dependency left a stale installer.
+          #
+          # These are spelled with their real on-disk case. sawbuck.wxs asks
+          # for DbgHelp.dll and SymSrv.dll, which Windows resolves anyway, but
+          # a build input that only matches case-insensitively is a trap on
+          # any host that does not.
           'inputs': [
             '<(INTERMEDIATE_DIR)/sawbuck.wixobj',
             '<(PRODUCT_DIR)/Sawbuck.exe',
+            # Embedded into the installer UI via the WixUILicenseRtf variable.
+            'license.rtf',
+            # The third-party payload, in sawbuck.wxs File element order.
+            '<(DEPTH)/third_party/icu/source/data/in/icudtl.dat',
+            '<(DEPTH)/third_party/debugging_tools/files/dbghelp.dll',
+            '<(DEPTH)/third_party/debugging_tools/files/symsrv.dll',
           ],
           'outputs': [
             '<(PRODUCT_DIR)/sawbuck.msi',
