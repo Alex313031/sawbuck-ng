@@ -26,7 +26,20 @@
 #include "gmock/gmock.h"
 
 namespace {
+// This function exists purely to give the tests below an address to resolve
+// back to a name, so it has to stay a distinct function in the linked image.
+// NOTREACHED() alone does not achieve that in Release: it expands to
+// DCHECK(false), whose condition is compile-time false once NDEBUG is set, so
+// the statement disappears and the body becomes empty -- byte-identical to
+// every other empty function in the binary. Release links /INCREMENTAL:NO and
+// build/common.gypi sets no explicit /OPT:, so the linker's default /OPT:ICF
+// folds all of them together, &Foo lands on the surviving COMDAT, and the
+// IsSubstring check below sees whatever name that one has.
+//
+// The static write keeps the generated code unique, so ICF leaves it alone.
 void Foo() {
+  static volatile int keep_distinct = 0;
+  keep_distinct = __LINE__;
   NOTREACHED() << "This function is only here for an address to resolve";
 }
 
