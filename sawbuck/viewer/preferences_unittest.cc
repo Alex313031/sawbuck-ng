@@ -14,27 +14,24 @@
 //
 #include "sawbuck/viewer/preferences.h"
 #include "gtest/gtest.h"
+#include "sawbuck/viewer/const_config.h"
 #include "sawbuck/viewer/registry_test.h"
 
 namespace {
 
 class PreferencesTest: public testing::RegistryTest {
+ protected:
+  // Seeds the settings key with one string preference and one that is a
+  // DWORD, so the string reads below have a wrong-type case to fall back on.
+  bool WriteStringPreferences() {
+    return WriteString(HKEY_CURRENT_USER, config::kSettingsKey, L"foo",
+                       L"bar") &&
+        WriteDword(HKEY_CURRENT_USER, config::kSettingsKey, L"number", 12345);
+  }
 };
 
-const wchar_t kStringPrefences[] = L""
-L"HKCU {\r\n"
-L"  NoRemove Software {\r\n"
-L"    NoRemove Google {\r\n"
-L"      ForceRemove Sawbuck {\r\n"
-L"        val foo = s 'bar'\r\n"
-L"        val number = d '12345'\r\n"
-L"      }\r\n"
-L"    }\r\n"
-L"  }\r\n"
-L"}\r\n";
-
 TEST_F(PreferencesTest, ReadStringValue) {
-  Register(kStringPrefences);
+  ASSERT_TRUE(WriteStringPreferences());
 
   Preferences pref;
 

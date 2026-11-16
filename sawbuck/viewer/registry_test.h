@@ -33,8 +33,20 @@ class RegistryTest : public testing::Test {
   // Undoes redirection and deletes any keys created during Setup or test.
   virtual void TearDown();
 
-  // Register the supplied ATL registry script.
-  bool Register(const wchar_t* reg_file);
+  // Helpers for populating the redirected hives. |root| must be
+  // HKEY_CURRENT_USER or HKEY_LOCAL_MACHINE, both of which SetUp() has
+  // redirected; |key_path| is created along with any missing parents.
+  //
+  // |value_name| may be NULL to address the key's default value, which is
+  // where Sawbuck stores provider names and flag masks.
+  //
+  // These replace a Register() that fed an ATL registry script to
+  // CRegObject. See registry_test.cc for why that had to go.
+  bool CreateKey(HKEY root, const wchar_t* key_path);
+  bool WriteString(HKEY root, const wchar_t* key_path,
+                   const wchar_t* value_name, const wchar_t* value);
+  bool WriteDword(HKEY root, const wchar_t* key_path,
+                  const wchar_t* value_name, DWORD value);
 
  private:
   base::win::RegKey hkcu_;

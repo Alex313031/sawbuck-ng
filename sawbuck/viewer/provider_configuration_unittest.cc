@@ -16,45 +16,32 @@
 #include "sawbuck/viewer/provider_configuration.h"
 
 #include <atlbase.h>
-#include <statreg.h>
+#include <string>
 #include "gtest/gtest.h"
 #include "sawbuck/viewer/registry_test.h"
 #include "sawbuck/viewer/const_config.h"
 
 namespace {
 
-const wchar_t* kHKCUReplacement =
-    L"Software\\Google\\InstallUtilUnittest\\HKCU";
-const wchar_t* kHKLMReplacement =
-    L"Software\\Google\\InstallUtilUnittest\\HKLM";
-
 // This test fixture redirects the HKLM and HKCU registry hives for
 // the duration of the test to make it independent of the machine
 // and user settings.
 class ProviderConfigurationTest : public testing::RegistryTest {
+ protected:
+  // Creates the HKLM registrations that ProviderConfiguration::
+  // ReadProviders() walks: one fully specified provider with named flags,
+  // and one bare provider that exercises the fallback defaults.
+  bool RegisterProviders();
+
+  // Creates the HKCU per-provider settings that ReadSettings() layers over
+  // those defaults.
+  bool RegisterProviderSettings();
 };
 
-const wchar_t kProviderRegistrations[] = L""
-L"HKLM {\r\n"
-L"  NoRemove Software {\r\n"
-L"    NoRemove Google {\r\n"
-L"      ForceRemove Sawbuck {\r\n"
-L"        Providers {\r\n"
-L"          '{0562BFC3-2550-45b4-BD8E-A310583D3A6F}' = s 'Chrome Frame' {\r\n"
-L"            val default_flags = d '&H00000001'\r\n"
-L"            val default_level = d '2'\r\n"
-L"            Flags {\r\n"
-L"              Dummy = d '&H00000002'\r\n"
-L"              StackDummyTrace = d '&H00000003'\r\n"
-L"              StackTrace = d '&H00000001'\r\n"
-L"            }\r\n"
-L"          }\r\n"
-L"          '{7FE69228-633E-4f06-80C1-527FEA23E3A7}' = s 'Chrome'\r\n"
-L"        }\r\n"
-L"      }\r\n"
-L"    }\r\n"
-L"  }\r\n"
-L"}\r\n";
+const wchar_t kChromeFrameGuidString[] =
+    L"{0562BFC3-2550-45b4-BD8E-A310583D3A6F}";
+const wchar_t kChromeGuidString[] =
+    L"{7FE69228-633E-4f06-80C1-527FEA23E3A7}";
 
 const GUID kChromeFrameGuid = {
     0x0562BFC3, 0x2550, 0x45b4,
@@ -64,8 +51,60 @@ const GUID kChromeGuid = {
     0x7FE69228, 0x633E, 0x4f06,
     0x80, 0xC1, 0x52, 0x7F, 0xEA, 0x23, 0xE3, 0xA7 };
 
+// Builds a registry path from a parent path and a subkey name.
+std::wstring Join(const std::wstring& parent, const wchar_t* child) {
+  return parent + L"\\" + child;
+}
+
+bool ProviderConfigurationTest::RegisterProviders() {
+  const std::wstring chrome_frame_key =
+      Join(config::kProviderNamesKey, kChromeFrameGuidString);
+  const std::wstring flags_key =
+      Join(chrome_frame_key, config::kProviderFlagsKey);
+
+  // A provider's display name is the key's default value, and each named
+  // flag is a subkey of Flags whose default value is the flag's mask. The
+  // keys are created in enumeration order, so that the expectations below
+  // hold whether or not the registry hands back subkeys sorted.
+  return
+      WriteString(HKEY_LOCAL_MACHINE, chrome_frame_key.c_str(), NULL,
+                  L"Chrome Frame") &&
+      WriteDword(HKEY_LOCAL_MACHINE, chrome_frame_key.c_str(),
+                 config::kProviderDefaultFlagsValue, 1) &&
+      WriteDword(HKEY_LOCAL_MACHINE, chrome_frame_key.c_str(),
+                 config::kProviderDefaultLevelValue, 2) &&
+      WriteDword(HKEY_LOCAL_MACHINE, Join(flags_key, L"Dummy").c_str(),
+                 NULL, 2) &&
+      WriteDword(HKEY_LOCAL_MACHINE,
+                 Join(flags_key, L"StackDummyTrace").c_str(), NULL, 3) &&
+      WriteDword(HKEY_LOCAL_MACHINE, Join(flags_key, L"StackTrace").c_str(),
+                 NULL, 1) &&
+      // Name only -- no default_level, no default_flags and no Flags key,
+      // so ReadProviders() has to supply its own defaults for this one.
+      WriteString(HKEY_LOCAL_MACHINE,
+                  Join(config::kProviderNamesKey, kChromeGuidString).c_str(),
+                  NULL, L"Chrome");
+}
+
+bool ProviderConfigurationTest::RegisterProviderSettings() {
+  const std::wstring chrome_frame_key =
+      Join(config::kProviderLevelsKey, kChromeFrameGuidString);
+  const std::wstring chrome_key =
+      Join(config::kProviderLevelsKey, kChromeGuidString);
+
+  return
+      WriteDword(HKEY_CURRENT_USER, chrome_frame_key.c_str(),
+                 config::kProviderEnableFlagsValue, 0xcafebabe) &&
+      WriteDword(HKEY_CURRENT_USER, chrome_frame_key.c_str(),
+                 config::kProviderLevelValue, 3) &&
+      WriteDword(HKEY_CURRENT_USER, chrome_key.c_str(),
+                 config::kProviderEnableFlagsValue, 1) &&
+      WriteDword(HKEY_CURRENT_USER, chrome_key.c_str(),
+                 config::kProviderLevelValue, 2);
+}
+
 TEST_F(ProviderConfigurationTest, ReadProviders) {
-  ASSERT_TRUE(Register(kProviderRegistrations));
+  ASSERT_TRUE(RegisterProviders());
 
   ProviderConfiguration settings;
   ASSERT_TRUE(settings.ReadProviders());
@@ -93,29 +132,9 @@ TEST_F(ProviderConfigurationTest, ReadProviders) {
   ASSERT_EQ(0, set->flag_names.size());
 }
 
-const wchar_t kProviderConfiguration[] = L""
-L"HKCU {\r\n"
-L"  NoRemove Software {\r\n"
-L"    NoRemove Google {\r\n"
-L"      ForceRemove Sawbuck {\r\n"
-L"        Levels {\r\n"
-L"          '{0562BFC3-2550-45b4-BD8E-A310583D3A6F}' {\r\n"
-L"            val enable_flags = d '&Hcafebabe'\r\n"
-L"            val log_level = d '3'\r\n"
-L"          }\r\n"
-L"          '{7FE69228-633E-4f06-80C1-527FEA23E3A7}' {\r\n"
-L"            val enable_flags = d '&H00000001'\r\n"
-L"            val log_level = d '2'\r\n"
-L"          }\r\n"
-L"        }\r\n"
-L"      }\r\n"
-L"    }\r\n"
-L"  }\r\n"
-L"}\r\n";
-
 TEST_F(ProviderConfigurationTest, ReadSettings) {
-  ASSERT_TRUE(Register(kProviderRegistrations));
-  ASSERT_TRUE(Register(kProviderConfiguration));
+  ASSERT_TRUE(RegisterProviders());
+  ASSERT_TRUE(RegisterProviderSettings());
 
   ProviderConfiguration settings;
   ASSERT_TRUE(settings.ReadProviders());
@@ -133,7 +152,7 @@ TEST_F(ProviderConfigurationTest, ReadSettings) {
 }
 
 TEST_F(ProviderConfigurationTest, WriteSettings) {
-  ASSERT_TRUE(Register(kProviderRegistrations));
+  ASSERT_TRUE(RegisterProviders());
 
   ProviderConfiguration settings;
   ASSERT_TRUE(settings.ReadProviders());
