@@ -64,7 +64,6 @@
 #define ID_LOG_CAPTURE                  4003
 #define ID_LOG_CONFIGUREPROVIDERS       4004
 #define ID_LOG_FILTER                   4005
-#define ID_SETTIME0_ITEM1               4006
 #define ID_SET_TIME_ZERO                4007
 #define ID_RESET_BASE_TIME              4008
 #define ID_LOG_SYMBOLPATH               4009
