@@ -71,6 +71,12 @@ bool IsSelected(UINT state) {
 
 const int kNoItem = -1;
 
+// Capacity reserved for LogListView::item_text_ so that OnGetDispInfo never
+// reallocates it, which would free a buffer the list view is still holding.
+// Generous on purpose: a log message longer than this would reallocate once,
+// and the capacity then stays grown, so the window is a single paint at worst.
+const size_t kItemTextCapacity = 64 * 1024;
+
 }  // namespace
 
 using base::StringPrintf;
@@ -242,6 +248,11 @@ LRESULT LogListView::OnCreate(UINT msg,
   SetImageList(image_list, LVSIL_SMALL);
   AddColumns();
 
+  // Reserve once so that assigning cell text in OnGetDispInfo never
+  // reallocates -- see the note there. std::basic_string is guaranteed not to
+  // reallocate while size() <= capacity().
+  item_text_.reserve(kItemTextCapacity);
+
   // Tune our extended styles.
   SetExtendedListViewStyle(LVS_EX_HEADERDRAGDROP |
                            LVS_EX_FULLROWSELECT |
@@ -279,8 +290,28 @@ LRESULT LogListView::OnGetDispInfo(NMHDR* pnmh) {
                           static_cast<LogViewFormatter::Column>(col),
                           &temp_text);
 
-  item_text_ = base::UTF8ToWide(temp_text);
-  base::TrimWhitespace(item_text_, base::TRIM_TRAILING, &item_text_);
+  std::wstring text = base::UTF8ToWide(temp_text);
+  base::TrimWhitespace(text, base::TRIM_TRAILING, &text);
+
+  // Copy into item_text_'s existing buffer rather than assigning to it.
+  //
+  // This matters because the pointer handed to the control below has to stay
+  // valid until the control has finished with it, which is after this handler
+  // returns. The control asks for several cells of a row before painting
+  // them, so a later call must not move or free the buffer an earlier call
+  // handed out.
+  //
+  // The old code did `item_text_ = base::UTF8ToWide(...)`, a move-assignment
+  // from a temporary, which swapped in the temporary's buffer and freed the
+  // one already given to the control. Asking for the severity cell
+  // ("INFORMATION") and then the message cell of the same row was enough to
+  // do it whenever the message was the longer of the two, and the severity
+  // cell then painted from freed memory -- a run of identical boxes, being
+  // the debug heap's 0xDDDD fill pattern rendered as wide characters.
+  //
+  // assign() copies into the reserved capacity and cannot reallocate while
+  // the text fits, so the address stays put. See kItemTextCapacity.
+  item_text_.assign(text.data(), text.size());
 
   if (info->item.mask & LVIF_TEXT)
     info->item.pszText = const_cast<LPWSTR>(item_text_.c_str());

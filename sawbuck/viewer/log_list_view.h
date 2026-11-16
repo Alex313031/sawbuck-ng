@@ -219,7 +219,10 @@ class LogListView
   // Used to update our command state.
   CUpdateUIBase* update_ui_;
 
-  // Temporary storage for strings returned from OnGetDispInfo.
+  // Backing store for the strings returned from OnGetDispInfo. The list view
+  // reads this after the handler returns, so it must outlive the call -- and
+  // must not be reallocated by a later call, which would free a buffer the
+  // control is still holding. See OnGetDispInfo.
   std::wstring item_text_;
 
   // The last piece of text we searched for.
