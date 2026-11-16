@@ -1,0 +1,41 @@
+# Source files
+*.c text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.cc text eol=lf
+*.cxx text eol=lf
+*.cpp text eol=lf
+*.idl text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+
+# Build system Files
+*.py text
+*.gn text
+*.gni text
+*.gyp text
+*.gypi text
+*.mak text eol=lf
+*.diff text eol=lf
+*.patch text eol=lf
+
+# Keep scripts correct
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.rc text eol=crlf
+
+# Binaries. Detection gets these right today; saying so costs nothing.
+ *.dll binary
+ *.exe binary
+ *.lib binary
+ *.pyd binary
+ *.dat binary
+ *.etl binary
+ *.zip binary
+ *.ico binary
+ *.bmp binary
+ *.png binary
+ *.cub binary
+ *.wixlib binary
