@@ -270,6 +270,24 @@ bool ProviderConfiguration::ReadProviders() {
     err = providers.Open(HKEY_LOCAL_MACHINE, config::kProviderNamesKey,
                          kViews[i]);
   }
+  if (err == ERROR_FILE_NOT_FOUND) {
+    // Not an error: the key is simply absent, which is the normal state
+    // before the installer has run, and in any test that constructs a
+    // ViewerWindow without populating the registry first. There is nothing
+    // to capture until providers are registered, and the Register Providers
+    // menu item exists for exactly that.
+    //
+    // WARNING rather than ERROR specifically because this is reached during
+    // the unit tests. MSBuild matches Chromium's ":ERROR:file.cc(line)]" log
+    // prefix against its own canonical "file(line): error CODE:" format,
+    // logs it as a build error, and then fails the custom build step that
+    // produced it -- reporting MSB8066 "exited with code -1" even though
+    // run_unittests.py returned 0 and every test passed. A WARNING is
+    // matched too, but a logged warning does not fail the build.
+    LOG(WARNING) << "No ETW providers are registered, so nothing can be "
+                 << "captured yet.";
+    return false;
+  }
   if (err != ERROR_SUCCESS) {
     LOG(ERROR) << "Failed to open provider names key in any registry view, "
                << "last error " << err;
