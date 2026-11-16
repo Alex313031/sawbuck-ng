@@ -34,7 +34,7 @@
 
 namespace {
 
-const char* GetSeverityText(UCHAR severity) {
+std::string GetSeverityText(UCHAR severity) {
   switch (severity)  {
     case TRACE_LEVEL_NONE:
       return "NONE";
@@ -48,17 +48,20 @@ const char* GetSeverityText(UCHAR severity) {
       return "INFORMATION";
     case TRACE_LEVEL_VERBOSE:
       return "VERBOSE";
-    case TRACE_LEVEL_RESERVED6:
-      return "RESERVED6";
-    case TRACE_LEVEL_RESERVED7:
-      return "RESERVED7";
-    case TRACE_LEVEL_RESERVED8:
-      return "RESERVED8";
-    case TRACE_LEVEL_RESERVED9:
-      return "RESERVED9";
   }
 
-  return "UNKNOWN";
+  // Anything above VERBOSE is a VLOG verbosity level, not a reserved ETW
+  // level. base/logging_win.cc encodes VLOG(N) as
+  //     TRACE_LEVEL_INFORMATION - severity,  with severity == -N
+  // so VLOG(1) arrives as TRACE_LEVEL_VERBOSE and VLOG(2) and up arrive as
+  // 6, 7, 8 ... with no upper bound. Labelling those "RESERVED6".."RESERVED9"
+  // and then "UNKNOWN", as this used to, was doubly wrong: they are not
+  // reserved, and every VLOG above 5 became indistinguishable.
+  if (severity > TRACE_LEVEL_VERBOSE)
+    return base::StringPrintf("VERBOSE%d",
+                              severity - TRACE_LEVEL_INFORMATION);
+
+  return base::StringPrintf("LEVEL %d", severity);
 }
 
 // Returns true iff state indicates a selected listview item.
@@ -219,7 +222,12 @@ LRESULT LogListView::OnCreate(UINT msg,
   CImageList image_list;
   image_list.Create(16, 16, ILC_COLOR24 | ILC_MASK, 4, 0);
 
-  image_indexes_.resize(10);
+  // -1 means "no icon". Note this must not be 0-filled: 0 is a valid image
+  // index -- the first icon added below -- so any level left at the default
+  // would silently draw that icon. That is what used to happen to
+  // TRACE_LEVEL_NONE and to every VLOG level above VERBOSE, which all showed
+  // the error icon.
+  image_indexes_.assign(TRACE_LEVEL_VERBOSE + 1, -1);
   image_indexes_[TRACE_LEVEL_FATAL] =
       image_list.AddIcon(::LoadIcon(NULL, MAKEINTRESOURCE(IDI_ERROR)));
   image_indexes_[TRACE_LEVEL_ERROR] =
@@ -342,8 +350,17 @@ LRESULT LogListView::OnGetInfoTip(NMHDR* pnmh) {
 }
 
 int LogListView::GetImageIndexForSeverity(int severity) {
-  if (image_indexes_.size() > static_cast<size_t>(severity))
+  // Levels above VERBOSE are VLOG verbosity levels -- see GetSeverityText --
+  // and there is no upper bound on them, so they share the VERBOSE icon
+  // rather than falling off the end of the table.
+  if (severity > TRACE_LEVEL_VERBOSE)
+    severity = TRACE_LEVEL_VERBOSE;
+
+  if (severity >= 0 &&
+      static_cast<size_t>(severity) < image_indexes_.size()) {
     return image_indexes_[severity];
+  }
+
   return -1;
 }
 
