@@ -3712,7 +3712,7 @@ inline HBITMAP AtlGetDibBitmap(LPBITMAPINFO pbmi)
 	void * pBits = NULL;
 
 	LPBYTE pDibBits = (LPBYTE)pbmi + sizeof(BITMAPINFOHEADER) + AtlGetDibColorTableSize(&pbmi->bmiHeader) * sizeof(RGBQUAD);
-	if (hbm = CreateDIBSection(dc, pbmi, DIB_RGB_COLORS, &pBits, NULL, NULL)) 
+	if ((hbm = CreateDIBSection(dc, pbmi, DIB_RGB_COLORS, &pBits, NULL, NULL)) != NULL)
 		memcpy(pBits, pDibBits, pbmi->bmiHeader.biSizeImage);
 
 	return hbm;

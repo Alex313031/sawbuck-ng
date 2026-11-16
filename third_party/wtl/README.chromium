@@ -22,3 +22,21 @@ This patch simply consist of a search of replace for both term."
 ---
 
 Cherry pick of http://sourceforge.net/tracker/index.php?func=detail&aid=1871358&group_id=109071&atid=652374
+
+---
+
+Local: warnings MSVC has started emitting since WTL 8.0 was published, fixed
+here rather than suppressed, because suppressing them would also hide the same
+mistakes in Sawbuck's own code. All are spelling fixes with no behaviour
+change; WTL 10 carries equivalent ones upstream.
+
+  atlmisc.h, atldlgs.h -- C4302, 'type cast': truncation from LPCTSTR to WORD.
+    _U_STRINGorID::m_lpstr holds either a string or an INTRESOURCE, i.e. a
+    small integer in a pointer, and these sites want the integer. Casting a
+    pointer straight to WORD is ill-formed on Win64; (WORD)(ULONG_PTR) is the
+    cast the Windows SDK itself uses. Every site is already guarded by
+    IS_INTRESOURCE or by an ATLASSERT on the ID range.
+
+  atlgdi.h -- C4706, assignment used as a condition. AtlGetDibBitmap tests
+    the result of CreateDIBSection inline; parenthesised and compared against
+    NULL, which is what the warning asks for.

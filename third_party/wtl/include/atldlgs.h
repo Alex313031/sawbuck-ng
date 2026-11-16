@@ -3062,7 +3062,7 @@ public:
 		}
 		else if (IS_INTRESOURCE(Menu.m_lpstr))
 		{
-			WORD menuData[] = {0xFFFF, (WORD)Menu.m_lpstr};
+			WORD menuData[] = {0xFFFF, (WORD)(ULONG_PTR)Menu.m_lpstr};
 			AddData(menuData, sizeof(menuData));
 		}
 		else
@@ -3084,7 +3084,7 @@ public:
 		}
 		else if (IS_INTRESOURCE(ClassName.m_lpstr))
 		{
-			WORD classData[] = {0xFFFF, (WORD)ClassName.m_lpstr};
+			WORD classData[] = {0xFFFF, (WORD)(ULONG_PTR)ClassName.m_lpstr};
 			AddData(classData, sizeof(classData));
 		}
 		else
@@ -3138,7 +3138,7 @@ public:
 		ATLASSERT(ClassName.m_lpstr != NULL);
 		if (IS_INTRESOURCE(ClassName.m_lpstr))
 		{
-			WORD wData[] = {0xFFFF, (WORD)ClassName.m_lpstr};
+			WORD wData[] = {0xFFFF, (WORD)(ULONG_PTR)ClassName.m_lpstr};
 			AddData(wData, sizeof(wData));
 		}
 		else
@@ -3153,7 +3153,7 @@ public:
 		}
 		else if (IS_INTRESOURCE(Text.m_lpstr))
 		{
-			WORD wData[] = {0xFFFF, (WORD)Text.m_lpstr};
+			WORD wData[] = {0xFFFF, (WORD)(ULONG_PTR)Text.m_lpstr};
 			AddData(wData, sizeof(wData));
 		}
 		else
