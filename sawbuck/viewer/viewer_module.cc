@@ -83,6 +83,27 @@ uint32_t HybridMessageLoopObserver::Dispatch(const base::NativeEvent& event) {
   // Make sure menus, toolbars and such are updated after event is handled.
   MaybeScheduleIdleTask();
 
+  // Offer the message to WTL's filters before the pump dispatches it. This is
+  // the "hook in WTL PreTranslateMessage" the class comment above describes,
+  // and it had been missing: CMessageLoop::PreTranslateMessage walks the
+  // registered CMessageFilters, which is how a message reaches
+  // ViewerWindow::PreTranslateMessage and from there CFrameWindowImpl's, the
+  // one that finally calls TranslateAccelerator on the IDR_MAIN_FRAME table.
+  //
+  // Without it no accelerator did anything, while the matching menu items all
+  // worked -- a menu click arrives as a plain WM_COMMAND and needs no
+  // translation, whereas Ctrl+C arrives as WM_KEYDOWN and is only turned into
+  // WM_COMMAND by TranslateAccelerator.
+  //
+  // When a filter reports the message handled, return POST_DISPATCH_NONE so
+  // the pump does not also TranslateMessage/DispatchMessage it: see
+  // MessagePumpForUI::ProcessMessageHelper, which performs the default action
+  // only when POST_DISPATCH_PERFORM_DEFAULT comes back. Dispatching as well
+  // would deliver the original keystroke on top of the command it generated.
+  MSG msg = event;
+  if (CMessageLoop::PreTranslateMessage(&msg))
+    return POST_DISPATCH_NONE;
+
   return POST_DISPATCH_PERFORM_DEFAULT;
 }
 
