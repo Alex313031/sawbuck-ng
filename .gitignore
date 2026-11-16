@@ -57,9 +57,6 @@
 /out/
 /sawbuck/py/etw/build/
 
-# Ignore doxygen output.
-/syzygy/doc/
-
 # Ignore directories gclient syncs.
 /base/
 /build/
