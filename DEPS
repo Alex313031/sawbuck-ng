@@ -158,6 +158,12 @@ vars = {
   'gyp_next_revision': 'b5b1525b5b834559d9b84d4eb48117adc3dedb23',  # v0.22.4
 }
 
+# Only these hosts are allowed for dependencies in this DEPS file.
+allowed_hosts = [
+  'chromium.googlesource.com',
+  'github.com',
+]
+
 deps = {
   'base':
     '{chromium_git}/chromium/src/base.git@{base_revision}',

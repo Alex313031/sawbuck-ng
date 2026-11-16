@@ -120,28 +120,45 @@
         # Warnings MSVC introduced after VS2013, which common.gypi's 2014-era
         # suppression list cannot know about. Appended to that list.
         #
-        # This is a curated set, not a measured one: the build log available so
-        # far contained only the Error rows, so the warning codes behind the
-        # C2220s are still unknown. Narrow this once they are.
+        # Measured rather than guessed: this is what survived emptying both
+        # suppression lists and building Debug x86 and x64 in full. Six
+        # entries went away in that pass -- 4091, 4456, 4457 and 4459 because
+        # common.gypi's global list (common.gypi:5691) already carries them
+        # and nothing of ours fires them, and 4464 and 5038 because both are
+        # off-by-default warnings that /W4 never emits at all, so no code
+        # change could ever wake them.
+        #
+        # 4458, 4838 and 4996 are in common.gypi's list too. They are
+        # repeated here on purpose, so the reason we need them lives in our
+        # own file instead of depending on Chromium's list surviving a
+        # build_revision bump.
         'msvs_disabled_warnings': [
-          4091,  # 'typedef ' ignored when no variable is declared. Fires inside
-                 # dbghelp.h, which sym_util and the viewer both depend on.
           4201,  # Nameless struct/union -- a Microsoft extension rather than
                  # C++, but one the Windows SDK headers use throughout, and
                  # which KernelProcessEvents::ProcessInfo uses deliberately to
                  # keep a variable-length SID reachable under its own name.
-          4267,  # Conversion from size_t to a smaller type.
-          4456,  # Declaration hides previous local declaration.
-          4457,  # Declaration hides function parameter.
-          4458,  # Declaration hides class member.
-          4459,  # Declaration hides global declaration.
-          4464,  # Relative include path contains '..' -- which Chromium and
-                 # Sawbuck both use throughout.
+          4267,  # Conversion from size_t to a smaller type. x64 only, where
+                 # size_t is 64 bits: the list views narrow row and column
+                 # counts into the int and ULONG that the common control's own
+                 # API takes, and PCRE does the same in pcreposix.c.
+          4458,  # Declaration hides class member. All of it is vendored WTL
+                 # (atldlgs.h's task dialog setters) and ICU's
+                 # messagepattern.h.
           4577,  # 'noexcept' used with no exception handling mode specified;
-                 # common.gypi compiles with ExceptionHandling 0.
-          4838,  # Conversion requires a narrowing conversion.
-          4996,  # Deprecated declarations, now including C++17 STL removals.
-          5038,  # Data member will be initialized after another member.
+                 # common.gypi compiles with ExceptionHandling 0. Fires
+                 # nowhere today, and kept anyway: that condition is still
+                 # true, so writing a noexcept -- or raising /std: -- could
+                 # bring it back.
+          4838,  # Narrowing conversion required. All of it is vendored WTL
+                 # (atlgdi.h, atlframe.h).
+          4996,  # Deprecated declarations. The _CRT_SECURE_* family is
+                 # already handled by macro -- common.gypi:2910 defines
+                 # _CRT_SECURE_NO_DEPRECATE and _SCL_SECURE_NO_DEPRECATE for
+                 # the whole tree -- so what is left here is genuinely
+                 # deprecated Win32 APIs, plus the entire _CXX17_DEPRECATE_*
+                 # family once _HAS_CXX17 becomes 1. Worth unsuppressing
+                 # deliberately after the C++17 move rather than carrying it
+                 # blind.
         ],
 
         'msvs_settings': {
@@ -150,8 +167,32 @@
             # Pin the C++ standard. common.gypi predates /std: entirely, so
             # the version in force was whatever the compiler defaulted to --
             # C++14 for VS2022. Stating it keeps that from drifting with the
-            # toolchain. Raising it is a separate job: this is 2014 code, and
-            # C++17 removes things it uses.
+            # toolchain.
+            #
+            # Raising it to C++17 looks cheap. Scanning the tree for what
+            # C++17 removed or deprecated turns up nothing real in sawbuck/
+            # at all, and in the dependencies every hit is either a comment
+            # (auto_ptr, random_shuffle, mem_fun), an ICU tool we do not
+            # build (tzcode's tz2icu.cpp uses ptr_fun/bind2nd), or gtest and
+            # gmock's own test suites, which we also do not build (tr1,
+            # unary_function). No dynamic exception specifications anywhere,
+            # no std::iterator base classes, no stdext array iterators. So
+            # none of _HAS_AUTO_PTR_ETC, _HAS_TR1_NAMESPACE or
+            # _HAS_FUNCTION_ALLOCATOR_SUPPORT should be needed.
+            #
+            # What does need doing, in patches/ since both are synced deps:
+            # two 'register' declarations, which C++17 removed and MSVC
+            # reports as C5033 -- base/third_party/dmg_fp/g_fmt.cc:32-33
+            # (built, see base.gypi:634) and
+            # third_party/icu/source/common/ustr_wcs.cpp:343 (icuuc).
+            #
+            # The parts a scan cannot settle: [[nodiscard]] goes live across
+            # much of the STL and reports as C4834, which neither suppression
+            # list carries, and ExceptionHandling 0 (so _HAS_EXCEPTIONS=0)
+            # combined with C++17 is a thinly travelled MSVC STL
+            # configuration. Note that <hash_map> is unaffected --
+            # _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS above is not gated on
+            # the standard version, so it keeps working either way.
             'AdditionalOptions': ['/std:c++14'],
           },
         },
