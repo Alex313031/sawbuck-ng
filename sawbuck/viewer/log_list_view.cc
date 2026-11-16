@@ -234,16 +234,20 @@ LRESULT LogListView::OnCreate(UINT msg,
   // TRACE_LEVEL_NONE and to every VLOG level above VERBOSE, which all showed
   // the error icon.
   image_indexes_.assign(TRACE_LEVEL_VERBOSE + 1, -1);
+  // No MAKEINTRESOURCE here: the IDI_* constants are already the result of
+  // one, so applying it a second time casts the pointer down to a WORD and
+  // back (C4302). That happens to survive only because the values are small
+  // integers in disguise.
   image_indexes_[TRACE_LEVEL_FATAL] =
-      image_list.AddIcon(::LoadIcon(NULL, MAKEINTRESOURCE(IDI_ERROR)));
+      image_list.AddIcon(::LoadIcon(NULL, IDI_ERROR));
   image_indexes_[TRACE_LEVEL_ERROR] =
-      image_list.AddIcon(::LoadIcon(NULL, MAKEINTRESOURCE(IDI_ERROR)));
+      image_list.AddIcon(::LoadIcon(NULL, IDI_ERROR));
   image_indexes_[TRACE_LEVEL_WARNING] =
-      image_list.AddIcon(::LoadIcon(NULL, MAKEINTRESOURCE(IDI_WARNING)));
+      image_list.AddIcon(::LoadIcon(NULL, IDI_WARNING));
   image_indexes_[TRACE_LEVEL_INFORMATION] =
-      image_list.AddIcon(::LoadIcon(NULL, MAKEINTRESOURCE(IDI_INFORMATION)));
+      image_list.AddIcon(::LoadIcon(NULL, IDI_INFORMATION));
   image_indexes_[TRACE_LEVEL_VERBOSE] =
-      image_list.AddIcon(::LoadIcon(NULL, MAKEINTRESOURCE(IDI_QUESTION)));
+      image_list.AddIcon(::LoadIcon(NULL, IDI_QUESTION));
 
   SetImageList(image_list, LVSIL_SMALL);
   AddColumns();
@@ -583,8 +587,9 @@ void LogListView::OnContextMenu(CWindow wnd, CPoint point) {
   }
 #endif
 
-  const UINT kMenuFlags = TPM_LEFTALIGN | TPM_VCENTERALIGN | TPM_RIGHTBUTTON |
-                          TPM_HORPOSANIMATION | TPM_VERPOSANIMATION;
+  // Zero means TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, which is what a
+  // context menu wants: it is raised from OnContextMenu, i.e. on right-button
+  // *up*, so the button is no longer down to select with.
   menu.TrackPopupMenu(0, point.x, point.y, wnd);
 }
 

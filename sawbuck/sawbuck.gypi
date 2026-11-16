@@ -126,6 +126,10 @@
         'msvs_disabled_warnings': [
           4091,  # 'typedef ' ignored when no variable is declared. Fires inside
                  # dbghelp.h, which sym_util and the viewer both depend on.
+          4201,  # Nameless struct/union -- a Microsoft extension rather than
+                 # C++, but one the Windows SDK headers use throughout, and
+                 # which KernelProcessEvents::ProcessInfo uses deliberately to
+                 # keep a variable-length SID reachable under its own name.
           4267,  # Conversion from size_t to a smaller type.
           4456,  # Declaration hides previous local declaration.
           4457,  # Declaration hides function parameter.

@@ -73,6 +73,14 @@ class InitializingCoClass {
   // Creates an instance of CComObject<T>, initializes it and queries it
   // for interface I.
   // @param instance on success returns the new, initialized instance.
+  //
+  // @note the cast on the failure path is load bearing. T is an abstract
+  //     class -- it leaves IUnknown's methods pure, which is exactly what
+  //     CComObject<T> supplies -- and it has no virtual destructor, so
+  //     deleting through a T* is undefined behaviour (C5205) and in practice
+  //     runs no destructor at all, leaking the ATL module lock CComObject's
+  //     destructor would have released. The object really is a TImpl, so the
+  //     downcast is well defined.
   template <class I>
   static HRESULT CreateInitialized(I** instance) {
     T* new_instance;
@@ -83,7 +91,7 @@ class InitializingCoClass {
     hr = new_instance->QueryInterface(__uuidof(I),
                                       reinterpret_cast<void**>(instance));
     if (FAILED(hr))
-      delete new_instance;
+      delete static_cast<TImpl*>(new_instance);
 
     return hr;
   }
@@ -101,7 +109,7 @@ class InitializingCoClass {
 
     hr = new_instance->QueryInterface(iid, reinterpret_cast<void**>(instance));
     if (FAILED(hr))
-      delete new_instance;
+      delete static_cast<TImpl*>(new_instance);
 
     return hr;
   }

@@ -29,9 +29,11 @@ std::ostream& operator<<(std::ostream& os, const LogHr& hr) {
   // want inserts expanded.
   const DWORD kFlags = FORMAT_MESSAGE_FROM_SYSTEM |
                        FORMAT_MESSAGE_IGNORE_INSERTS;
+  // The returned length is not needed: error_text is zero-initialized, so a
+  // failed lookup simply yields an empty message rather than garbage.
   char error_text[4096] = { '\0' };
-  DWORD message_length = ::FormatMessageA(kFlags, 0, hr.hr_, 0, error_text,
-                                          arraysize(error_text), NULL);
+  ::FormatMessageA(kFlags, 0, hr.hr_, 0, error_text, arraysize(error_text),
+                   NULL);
   std::string error(error_text);
   base::TrimWhitespaceASCII(error, base::TRIM_ALL, &error);
 
@@ -44,9 +46,10 @@ std::ostream& operator<<(std::ostream& os, const LogWe& we) {
   // want inserts expanded.
   const DWORD kFlags = FORMAT_MESSAGE_FROM_SYSTEM |
                        FORMAT_MESSAGE_IGNORE_INSERTS;
+  // As above: the length is unused, an empty message is the failure case.
   char error_text[4096] = { '\0' };
-  DWORD message_length = ::FormatMessageA(kFlags, 0, we.we_, 0, error_text,
-                                          arraysize(error_text), NULL);
+  ::FormatMessageA(kFlags, 0, we.we_, 0, error_text, arraysize(error_text),
+                   NULL);
   std::string error(error_text);
   base::TrimWhitespaceASCII(error, base::TRIM_ALL, &error);
 

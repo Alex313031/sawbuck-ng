@@ -191,9 +191,13 @@
           # defaults to true, so the level would fall back to asInvoker and
           # disagree. 'EnableUAC': 'false' is what suppresses it.
           'UACExecutionLevel': 2,
-          # This corresponds to /PROFILE, which ensures that the
-          # PDB file contains a FIXUP stream.
-          'Profile': 'true',
+          # NOTE: 'Profile': 'true' (/PROFILE, for the PDB's FIXUP stream)
+          # used to be set here and is deliberately gone. common.gypi sets it
+          # on Release_Base already, next to 'LinkIncremental': '1', so the
+          # release PDB still carries FIXUPs. Setting it at target level
+          # applied it to Debug as well, where it is useless and not free:
+          # /PROFILE implies /INCREMENTAL:NO, so every debug link was a full
+          # one, and the linker said so with LNK4075.
         },
         'VCManifestTool': {
           'AdditionalManifestFiles': ['$(ProjectDir)\\sawbuck.exe.manifest'],

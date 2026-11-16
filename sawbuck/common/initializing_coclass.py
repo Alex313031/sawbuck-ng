@@ -58,6 +58,10 @@ TEMPLATE_ = Template('''\
     return hr;
   }
 
+  // @note the cast on the failure path is load bearing -- see the note on
+  //     the no-argument CreateInitialized in initializing_coclass.h. T is
+  //     abstract and has no virtual destructor, so deleting through a T* is
+  //     undefined behaviour (C5205) and runs no destructor at all.
   template <class I, ${templ_params}>
   static HRESULT CreateInitialized(${params}, I** instance) {
     T* new_instance;
@@ -68,7 +72,7 @@ TEMPLATE_ = Template('''\
     hr = new_instance->QueryInterface(__uuidof(I),
                                       reinterpret_cast<void**>(instance));
     if (FAILED(hr))
-      delete new_instance;
+      delete static_cast<TImpl*>(new_instance);
 
     return hr;
   }
@@ -82,7 +86,7 @@ TEMPLATE_ = Template('''\
 
     hr = new_instance->QueryInterface(iid, reinterpret_cast<void**>(instance));
     if (FAILED(hr))
-      delete new_instance;
+      delete static_cast<TImpl*>(new_instance);
 
     return hr;
   }

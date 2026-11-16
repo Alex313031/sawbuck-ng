@@ -93,6 +93,16 @@ class KernelProcessEvents {
     ULONG process_id;
     ULONG parent_id;
     ULONG session_id;
+    // A SID is variable-length: the SubAuthority array declared inside it
+    // holds one entry and the rest follow it in memory. sub_auths reserves
+    // that trailing space, so &user_sid can be handed to CopySid, EqualSid
+    // and GetLengthSid as a complete SID of any size -- which is also why
+    // these two are grouped: the group documents that sub_auths is storage
+    // for user_sid and not a field of its own. Nothing reads it by name.
+    //
+    // The group is nameless so that the members stay reachable as
+    // info.user_sid rather than info.sid.user_sid. That is a Microsoft
+    // extension, hence the C4201 suppression in sawbuck.gypi.
     struct {
       SID user_sid;
       DWORD sub_auths[SECURITY_MAX_SID_SIZE - 1];

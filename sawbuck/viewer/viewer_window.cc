@@ -460,11 +460,11 @@ void ViewerWindow::OnLogMessage(const LogEvents::LogMessage& log_message) {
 
 void ViewerWindow::OnStatusUpdate(const wchar_t* status) {
   base::AutoLock lock(status_lock_);
+  const wchar_t kBackSpace = 0x08;
   if (status_.find_first_of(L"\r\n") == std::wstring::npos) {
     // No EOL in current status, backup for every backspace char.
     for (; *status != L'\0'; ++status) {
-      const wchar_t kBackSpace = 0x08;
-      if (*status == 0x08) {
+      if (*status == kBackSpace) {
         if (status_.length() > 0)
           status_.resize(status_.length() - 1);
       } else {

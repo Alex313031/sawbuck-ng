@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "sawbuck/sym_util/symbol_cache.h"
 
+#include "base/logging.h"
 #include "base/strings/string_util.h"
 #include <dbghelp.h>
 
@@ -75,6 +76,13 @@ bool SymbolCache::Initialize(size_t num_modules,
   for (size_t i = 0; i < num_modules; ++i) {
     modules_.push_back(modules[i]);
 
+    // SymLoadModuleEx returns zero both on failure and when the module is
+    // already loaded, and tells the two apart only through the last error --
+    // so the last error has to be cleared first for the check to mean
+    // anything. A module that genuinely fails to load is not fatal: the other
+    // modules still resolve, and addresses in this one come back
+    // unsymbolized, which is worth a line in the log and nothing more.
+    ::SetLastError(ERROR_SUCCESS);
     DWORD64 load_base = ::SymLoadModuleEx(process_handle_,
                                           NULL,
                                           modules[i].image_file_name.c_str(),
@@ -83,6 +91,13 @@ bool SymbolCache::Initialize(size_t num_modules,
                                           modules[i].module_size,
                                           NULL,
                                           0);
+    if (load_base == 0) {
+      DWORD error = ::GetLastError();
+      if (error != ERROR_SUCCESS) {
+        LOG(WARNING) << "SymLoadModuleEx failed for "
+                     << modules[i].image_file_name << ", error " << error;
+      }
+    }
   }
 
   return true;

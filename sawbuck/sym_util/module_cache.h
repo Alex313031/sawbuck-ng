@@ -125,7 +125,11 @@ class ModuleCache {
   typedef std::map<ModuleStateKey, ModuleLoadStateId> ProcessLoadStateMap;
   ProcessLoadStateMap process_states_;
 
-  static const ModuleLoadStateId kInvalidModuleLoadState = -1;
+  // ModuleLoadStateId is size_t, so this is SIZE_MAX, not a negative number.
+  // The cast says so: ids are handed out by post-incrementing a counter from
+  // zero, so the top of the range is never a real id.
+  static const ModuleLoadStateId kInvalidModuleLoadState =
+      static_cast<ModuleLoadStateId>(-1);
   static ModuleLoadState empty_;
 };
 
