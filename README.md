@@ -1,4 +1,4 @@
-# Sawbuck-ng
+# Sawbuck-ng &nbsp; <img src="./sawbuck/icon.png" width="38" height="38">
 
 Sawbuck-ng is a maintained fork of [Sawbuck](https://code.google.com/archive/p/sawbuck/), a Chromium log viewer.
 
