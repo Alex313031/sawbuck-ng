@@ -22,6 +22,56 @@ limitations under the License.
   <?define RTMProductVersion="0.5.0.0" ?>
   <?define UpgradeCode="{EC758BD3-1E77-4b54-A464-38824F53BCAF}" ?>
 
+  <!--
+    Architecture. installer.gyp passes MsiPlatform straight from MSBuild's
+    $(Platform), so it arrives as Win32 or x64 rather than in WiX's spelling,
+    and everything that varies by architecture is derived here instead of
+    being repeated at each use.
+
+    A 64-bit package is more than a flag on Package. Its components have to be
+    marked Win64 so their files land in ProgramFiles64Folder and their
+    registry writes go to the native view rather than WOW6432Node. Mixing
+    64-bit and 32-bit components in one package is a hard error (ICE80), so
+    all of this moves together.
+
+    The component GUIDs differ per architecture on purpose. A component GUID
+    is supposed to identify one resource at one path, and these install to
+    different directories in each package. Sharing them would break that,
+    and this product schedules RemoveExistingProducts after InstallFinalize,
+    so during a cross-architecture upgrade both products are briefly
+    registered at once, which is exactly when a shared GUID with two paths
+    misbehaves.
+
+    SystemFolder also inverts between the two: in a 32-bit package it is the
+    32-bit system directory and System64Folder is the native one, and in a
+    64-bit package that is reversed. Either msiexec.exe can uninstall either
+    package, but naming the matching one per architecture keeps the shortcut
+    honest.
+  -->
+<?if $(var.MsiPlatform) = x64 ?>
+  <?define PackagePlatform = "x64" ?>
+  <?define ComponentWin64 = "yes" ?>
+  <?define ProgramFilesFolderId = "ProgramFiles64Folder" ?>
+  <?define SystemFolderId = "System64Folder" ?>
+  <?define SawbuckShortcutGuid = "{34F5DEE2-7DF4-4608-B3C2-D9741DAE17F2}" ?>
+  <?define ProviderRegistryGuid = "{B387E993-64EA-499C-8B80-689B1121C5CF}" ?>
+  <?define SawbuckExeGuid = "{B3560AF7-C830-488D-A173-1E0014499A5D}" ?>
+  <?define IcuDataGuid = "{253DD73D-B5F4-4011-BC89-DAFE0F7686F1}" ?>
+  <?define DbgHelpDllGuid = "{713A98CF-AF3A-4B98-ADB1-F3EB7A41E0EA}" ?>
+  <?define SymSrvDllGuid = "{9FA4D779-083B-4DD3-BD4E-DAB728B61BA9}" ?>
+<?else?>
+  <?define PackagePlatform = "x86" ?>
+  <?define ComponentWin64 = "no" ?>
+  <?define ProgramFilesFolderId = "ProgramFilesFolder" ?>
+  <?define SystemFolderId = "SystemFolder" ?>
+  <?define SawbuckShortcutGuid = "{CECB7B52-78A8-4638-BD25-0CFD2F0044DF}" ?>
+  <?define ProviderRegistryGuid = "{1161AE44-89DE-4144-882A-E98C389C4F07}" ?>
+  <?define SawbuckExeGuid = "{8F825656-7F0D-4aa6-A22C-759F82D47E38}" ?>
+  <?define IcuDataGuid = "{54A35C00-08A8-4F95-9155-A970D4C52905}" ?>
+  <?define DbgHelpDllGuid = "{CDDFC08A-5814-4375-9971-2B35A039B72F}" ?>
+  <?define SymSrvDllGuid = "{04FFB025-E3C9-4ecd-8255-ED7E63EFC948}" ?>
+<?endif?>
+
   <Product Id='*'
       Name='Sawbuck'
       Language='1033'
@@ -29,6 +79,7 @@ limitations under the License.
       Manufacturer='Alex313031'
       UpgradeCode='$(var.UpgradeCode)' >
     <Package Description='The Chromium Log Viewer.'
+             Platform='$(var.PackagePlatform)'
              Manufacturer='Alex313031'
              InstallerVersion='200'
              Compressed='yes' />
@@ -111,7 +162,7 @@ limitations under the License.
 
     <!-- Define our program files foler -->
     <Directory Id='TARGETDIR' Name='SourceDir'>
-      <Directory Id='ProgramFilesFolder'>
+      <Directory Id='$(var.ProgramFilesFolderId)'>
         <Directory Id='ProgramFilesVendorFolder' Name='Alex313031'>
           <Directory Id='SAWBUCKAPPLICATIONDIRECTORY' Name='Sawbuck' />
         </Directory>
@@ -126,7 +177,8 @@ limitations under the License.
     <!-- Component for the application start menu shortcut -->
     <DirectoryRef Id='SawbuckProgramsDirectory'>
       <Component Id='SawbuckShortcutComponent'
-          Guid='{CECB7B52-78A8-4638-BD25-0CFD2F0044DF}'>
+          Guid='$(var.SawbuckShortcutGuid)'
+          Win64='$(var.ComponentWin64)'>
         <Shortcut Id='ApplicationStartMenuShortcut'
                   Name='Sawbuck'
                   Description='The Chromium log viewer.'
@@ -154,7 +206,7 @@ limitations under the License.
         -->
         <Shortcut Id='UninstallSawbuckShortcut'
                   Name='Uninstall Sawbuck'
-                  Target='[SystemFolder]msiexec.exe'
+                  Target='[$(var.SystemFolderId)]msiexec.exe'
                   Arguments='/x [ProductCode]'
                   Description='Uninstalls Sawbuck' />
       </Component>
@@ -163,7 +215,8 @@ limitations under the License.
     <!-- Provider registration component. -->
     <DirectoryRef Id='TARGETDIR'>
       <Component Id='ProviderRegistryComponent'
-          Guid='{1161AE44-89DE-4144-882A-E98C389C4F07}'>
+          Guid='$(var.ProviderRegistryGuid)'
+          Win64='$(var.ComponentWin64)'>
         <RegistryKey
             Root='HKLM'
             Key='Software\Alex313031\Sawbuck\Providers'
@@ -346,7 +399,8 @@ limitations under the License.
     <!-- Component for the application's EXE -->
     <DirectoryRef Id='SAWBUCKAPPLICATIONDIRECTORY'>
       <Component Id='SawbuckExeComponent'
-          Guid='{8F825656-7F0D-4aa6-A22C-759F82D47E38}'>
+          Guid='$(var.SawbuckExeGuid)'
+          Win64='$(var.ComponentWin64)'>
         <File Id='SawbuckExeFile'
             Name='Sawbuck.exe'
             DiskId='1'
@@ -396,7 +450,8 @@ limitations under the License.
         icudt.dll is removed cleanly and icudtl.dat is never considered.
       -->
       <Component Id='IcuDataComponent'
-          Guid='{54A35C00-08A8-4F95-9155-A970D4C52905}'>
+          Guid='$(var.IcuDataGuid)'
+          Win64='$(var.ComponentWin64)'>
         <File Id='IcuDataFile'
             Name='icudtl.dat'
             DiskId='1'
@@ -421,14 +476,16 @@ limitations under the License.
         does, so the forwarders are never followed.
       -->
       <Component Id='DbgHelpDllComponent'
-          Guid='{CDDFC08A-5814-4375-9971-2B35A039B72F}'>
+          Guid='$(var.DbgHelpDllGuid)'
+          Win64='$(var.ComponentWin64)'>
         <File Id='DbgHelpDllFile'
             Name='DbgHelp.dll'
             DiskId='1'
             Source='$(var.DBGHELP_DLL_PATH)' />
       </Component>
       <Component Id='SymSrvDllComponent'
-          Guid='{04FFB025-E3C9-4ecd-8255-ED7E63EFC948}'>
+          Guid='$(var.SymSrvDllGuid)'
+          Win64='$(var.ComponentWin64)'>
         <File Id='SymSrvDllFile'
             Name='SymSrv.dll'
             DiskId='1'

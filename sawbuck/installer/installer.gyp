@@ -67,6 +67,17 @@
             'sawbuck.wxs',
             '-out',
             '<@(_outputs)',
+            # MSBuild's own $(Platform), so the package architecture
+            # follows the configuration being built: the x64 configuration
+            # produces a 64-bit MSI around the x64 binary, and Win32 a 32-bit
+            # one. sawbuck.wxs maps Win32/x64 onto WiX's spelling and derives
+            # Win64, ProgramFiles64Folder and the component GUIDs from it.
+            #
+            # Expanded by MSBuild at build time rather than by GYP, for the
+            # same reason copy_dlls needs a per-configuration post-build step:
+            # one generated project holds all four configurations, so nothing
+            # GYP substitutes here could differ between them.
+            '-dMsiPlatform=$(Platform)',
             '-dSAWBUCK_EXE_PATH=<(PRODUCT_DIR)\\Sawbuck.exe',
             # Taken from the build output, not from third_party: these come in
             # per-architecture flavours and viewer.gyp's copy_dlls has already
