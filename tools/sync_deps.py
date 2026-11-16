@@ -44,6 +44,12 @@ git commit, so this reproduces the tree Sawbuck was actually maintained against:
     Where a pinned revision did not touch trunk, the nearest preceding trunk
     commit is used -- which is exactly what an SVN checkout at that pin yielded.
 
+Most of the manifest has since moved forward to the Chromium 49 branch point;
+only third_party/icu is still at r271365. Entries at M49 need no resolving at
+all, because the branch point is a single commit of chromium/src and this
+script fetches by subpath. gtest and gmock are the exception: they are separate
+repositories, so their M49 pins come from Chromium 49's own DEPS.
+
 Content is fetched through Gitiles' +archive endpoint, so no repository clone is
 needed; each directory is downloaded at its exact revision and nothing more.
 
@@ -60,6 +66,10 @@ Usage:
   ./tools/sync_deps.py --force         # re-fetch everything
   ./tools/sync_deps.py --only base     # fetch a single entry
   ./tools/sync_deps.py --list          # print the manifest and exit
+
+--only also fetches any entry nested inside one that was named, since fetching
+a directory replaces it wholesale: '--only testing' implies testing/gtest and
+testing/gmock.
 """
 
 import argparse
@@ -76,9 +86,9 @@ GITILES = 'https://chromium.googlesource.com'
 # Chromium src @ SVN r271365 == git 80d0cd87 == 37.0.2002.0 (M37 trunk, 2014-05-19).
 CHROMIUM_SRC = '80d0cd877a17c0678363b392b5d92403c15f1848'
 
-# base/ and build/ are pinned newer: the Chromium 49 branch point,
-# master@{#369907}. M49 is the last Chromium that supported Windows XP and is
-# still entirely GYP. Fetching these by subpath from chromium/src gives the
+# Everything taken out of chromium/src is pinned here: the Chromium 49 branch
+# point, master@{#369907}. M49 is the last Chromium that supported Windows XP
+# and is still entirely GYP. Fetching by subpath from chromium/src gives the
 # same trees DEPS gets from the per-directory mirrors -- verified by tree hash
 # -- and unlike git, Gitiles' archive endpoint can also reach the
 # 49.0.2623.112 release commit (4ec79b7f) if the stabilization-branch changes
@@ -104,22 +114,11 @@ DEPS = [
      'M49 branch point, master@{#369907}'),
     ('build', 'chromium/src', CHROMIUM_SRC_M49, 'build',
      'M49 branch point, master@{#369907}'),
-
-    # --- From chromium/src at the pinned chrome_revision (SVN r271365). ---
-    # Vestigial, so not fetched -- nothing in the tree references google_apis
-    # and generation succeeds without it. Left here, commented, so the pin
-    # survives if it turns out to be needed. Also commented out in DEPS.
-    # ('google_apis', 'chromium/src', CHROMIUM_SRC, 'google_apis',
-    #  'src/google_apis@271365'),
-    # Supplies gtest.gyp and gmock.gyp, which sawbuck's .gyp files depend on.
-    ('testing', 'chromium/src', CHROMIUM_SRC, 'testing',
-     'src/testing@271365'),
-    # Not fetched -- nothing in the tree references either, and removing them
-    # loses no generated targets. Left commented so the pins survive.
-    # ('tools/win', 'chromium/src', CHROMIUM_SRC, 'tools/win',
-    #  'src/tools/win@271365'),
-    # ('tools/code_coverage', 'chromium/src', CHROMIUM_SRC, 'tools/code_coverage',
-    #  'src/tools/code_coverage@271365'),
+    # Supplies gtest.gyp, gtest.gypi and gmock.gyp, which sawbuck's .gyp files
+    # depend on. Not a DEPS entry in Chromium itself -- testing/ is in-tree
+    # there -- so "what M49 used" is just the content at the branch point.
+    ('testing', 'chromium/src', CHROMIUM_SRC_M49, 'testing',
+     'M49 branch point, master@{#369907}'),
     # third_party/wtl is committed in-tree, not fetched: it has no standalone
     # mirror anywhere and Chromium's copy is patched, so there is nothing to
     # sync it from. See DEPS.
@@ -127,10 +126,6 @@ DEPS = [
      'M49 branch point, master@{#369907}'),
     ('third_party/modp_b64', 'chromium/src', CHROMIUM_SRC_M49, 'third_party/modp_b64',
      'M49 branch point, master@{#369907}'),
-    # Not fetched. Only base/allocator/allocator.gyp's 'tcmalloc_dir' refers to
-    # it, and the allocator target is not in anything Sawbuck builds.
-    # ('third_party/tcmalloc', 'chromium/src', CHROMIUM_SRC, 'third_party/tcmalloc',
-    #  'src/third_party/tcmalloc@271365'),
     # Not in DEPS.sawbuck -- see NOT_IN_DEPS below. base.gyp's
     # test_support_base target depends on libxml.gyp, and GYP resolves
     # dependencies at *file* granularity, so loading base.gyp at all requires
@@ -140,21 +135,49 @@ DEPS = [
     ('third_party/libxml', 'chromium/src', CHROMIUM_SRC_M49, 'third_party/libxml',
      'M49 branch point (added; not in DEPS.sawbuck)'),
 
-    # --- Standalone checkouts, each pinned separately by DEPS.sawbuck. ---
+    # --- From chromium/src at the pinned chrome_revision (SVN r271365). ---
+    # None of these are fetched any more; every live entry above has moved to
+    # the Chromium 49 branch point. They are left commented so their resolved
+    # pins survive, matching the commented-out deps in DEPS.
+    #
+    # google_apis is vestigial -- nothing in the tree references it and
+    # generation succeeds without it.
+    # ('google_apis', 'chromium/src', CHROMIUM_SRC, 'google_apis',
+    #  'src/google_apis@271365'),
+    # Nothing in the tree references either, and removing them loses no
+    # generated targets.
+    # ('tools/win', 'chromium/src', CHROMIUM_SRC, 'tools/win',
+    #  'src/tools/win@271365'),
+    # ('tools/code_coverage', 'chromium/src', CHROMIUM_SRC, 'tools/code_coverage',
+    #  'src/tools/code_coverage@271365'),
+    # Only base/allocator/allocator.gyp's 'tcmalloc_dir' refers to tcmalloc,
+    # and the allocator target is not in anything Sawbuck builds.
+    # ('third_party/tcmalloc', 'chromium/src', CHROMIUM_SRC, 'third_party/tcmalloc',
+    #  'src/third_party/tcmalloc@271365'),
+
+    # --- Standalone checkouts, each pinned separately. ---
     # DEPS.sawbuck pinned icu46 at chrome_revision (r271365); the newest icu46
     # commit at or before that is r262949 -- the very commit Chromium itself
-    # pinned at r271365, so the two agree exactly.
+    # pinned at r271365, so the two agree exactly. This is the one dependency
+    # still at M37; see DEPS for why it is being left for last.
     ('third_party/icu', 'chromium/deps/icu46',
      'c25f7de14670091b1b7dfeb7af4d04050cbbb1d8', None,
      'deps/third_party/icu46@271365 -> r262949'),
-    # gtest_revision 664; r664 did not touch trunk, so r663 is the checkout.
-    ('testing/gtest', 'external/googletest',
-     'be1b3b66822cc3929f3da700973cef88bf45849a', None,
-     'googletest/trunk@664 -> r663'),
-    # gmock_revision 453; r453 did not touch trunk, so r451 is the checkout.
+    # gtest and gmock are Chromium 49's own pins, read out of
+    # chromium/src@92d77538:DEPS rather than resolved from SVN footers.
+    #
+    # gtest moves repository as well: Chromium had left the googlecode mirror
+    # for the GitHub one by M49. The layout is unchanged -- this commit still
+    # predates googletest's mid-2015 merge with gmock, so there is no
+    # googletest/ subdirectory to strip. The M37 pins it replaces were
+    # external/googletest @ be1b3b66 (trunk@664 -> r663) and
+    # external/googlemock @ d138e259 (trunk@453 -> r451).
+    ('testing/gtest', 'external/github.com/google/googletest',
+     '6f8a66431cb592dad629028a50b3dd418a408c87', None,
+     'Chromium 49 DEPS, 2015-07-28'),
     ('testing/gmock', 'external/googlemock',
-     'd138e25941faa1a80f11a8e4cf2c7636402cc720', None,
-     'googlemock/trunk@453 -> r451'),
+     '0421b6f358139f02e102c9c332ce19a33faf75be', None,
+     'Chromium 49 DEPS, 2015-07-28'),
     # Not fetched. GYP at its original r1919 pin, kept for a while so the
     # known-good baseline stayed reproducible. That rationale is gone -- the
     # baseline is Chromium 49 now -- and it is Python 2 only, so it cannot run
@@ -173,6 +196,31 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 GITHUB_PREFIX = 'github:'
+
+
+def nested_under(dest):
+    """Manifest entries whose directories live inside |dest|.
+
+    Fetching an entry replaces its whole directory, so these are destroyed
+    along with it -- testing/gtest and testing/gmock are inside testing.
+    """
+    prefix = dest.rstrip('/') + '/'
+    return [entry for entry in DEPS if entry[0].startswith(prefix)]
+
+
+def misordered_entries(entries):
+    """Pairs where a nested entry would be fetched before its parent.
+
+    Since fetching a parent wipes its directory, the parent has to come first
+    or the child is thrown away again right after being written. The manifest
+    is ordered correctly; this exists so a future edit cannot quietly break
+    that and leave a hole no error reports.
+    """
+    dests = [entry[0] for entry in entries]
+    return [(parent, child)
+            for i, child in enumerate(dests)
+            for parent in dests[i + 1:]
+            if child.startswith(parent.rstrip('/') + '/')]
 
 
 def archive_url(repo, commit, subpath):
@@ -300,12 +348,28 @@ def main():
     entries = DEPS
     if args.only:
         wanted = set(args.only)
-        entries = [e for e in DEPS if e[0] in wanted]
         missing = wanted - {e[0] for e in DEPS}
         if missing:
             print('error: unknown entries: %s' % ', '.join(sorted(missing)),
                   file=sys.stderr)
             return 2
+        # Anything nested inside a requested entry has to be re-fetched too,
+        # because fetching the parent deletes it. Without this,
+        # '--only testing --force' left testing/gtest and testing/gmock gone
+        # and said nothing about it.
+        implied = sorted({e[0] for d in wanted for e in nested_under(d)}
+                         - wanted)
+        if implied:
+            print('Also syncing, nested inside the above: %s'
+                  % ', '.join(implied))
+        entries = [e for e in DEPS if e[0] in wanted or e[0] in implied]
+
+    problems = misordered_entries(entries)
+    if problems:
+        for parent, child in problems:
+            print('error: manifest order: %s is fetched after %s, which '
+                  'contains it' % (parent, child), file=sys.stderr)
+        return 2
 
     print('Syncing %d dependencies into %s' % (len(entries), ROOT))
     total = 0

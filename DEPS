@@ -65,7 +65,10 @@ vars = {
   'chromium_git': 'https://chromium.googlesource.com',
   'github_git': 'https://github.com',
 
-  # base and build are pinned to Chromium 49, the rest to SVN r271365 (M37).
+  # Everything is pinned to Chromium 49 now except third_party/icu, which is
+  # still the icu46 repository at SVN r271365 (M37). That one is deliberately
+  # last: it is a repository swap as well as a version bump, ICU 4.6 to 54.1,
+  # and it is the only dependency here that is optional -- it works as it is.
   #
   # M49 is the last Chromium that supported Windows XP, and it is still
   # entirely GYP -- there is no build/BUILD.gn at that revision -- so it clears
@@ -97,12 +100,13 @@ vars = {
   'zlib_revision': '8ce285440282702dfe4935baa2aa2f6819bed292',            # 2016-01-14, M49
   'modp_b64_revision': '781604dfe4c368363cec8c46d07dd9925e0c8f6b',        # 2015-10-08, M49
   'libxml_revision': 'fc3da0e5d6c0914e019979489c50cd588d1fb23a',          # 2016-01-15, M49
-
-  # Still M37 (SVN r271365). testing/ has to move together with the gtest and
-  # gmock sources below, since it supplies their .gyp files -- so it is held
-  # back until those move. The dates are the pinned commit's own date; see
-  # note 1 above.
-  'testing_revision': 'cbc76319f284b6ab55fd1f36a954afea7f8aac03',         # 2014-05-16
+  # testing/ supplies gtest.gyp and gmock.gyp. Bumping it moves the source
+  # list out to a new gtest.gypi and adds GTEST_LANG_CXX11=0 to the gtest
+  # target, which is a no-op here: gtest derives that macro from
+  # '__GXX_EXPERIMENTAL_CXX0X__ || __cplusplus >= 201103L', and MSVC reports
+  # __cplusplus as 199711L unless /Zc:__cplusplus is passed, which nothing
+  # here passes. So it was already 0; M49 merely states it.
+  'testing_revision': '776a9b3263577d56931c32f5b8f5d3667be1d8ee',         # 2016-01-16, M49
 
   # Resolved pins for entries that are no longer fetched, kept so restoring any
   # of them needs no re-resolving. See the commented-out deps below.
@@ -112,16 +116,31 @@ vars = {
   # 'tcmalloc_revision': '694f2a1366c4431e0c076474328ce6125aa897e0',      # 2014-05-18
 
   # Standalone repositories. These were already whole-repo checkouts in the old
-  # file, so they port over directly; only the URLs changed.
+  # file rather than subdirectories of chromium/src, so they port over
+  # directly.
   #
   # icu46 was pinned at chrome_revision (r271365), and the newest icu46 commit
   # at or before that is r262949 -- the very commit Chromium itself pinned at
   # r271365, so the two agree exactly.
   'icu_revision': 'c25f7de14670091b1b7dfeb7af4d04050cbbb1d8',    # svn r262949
-  # gtest_revision was 664; r664 did not touch trunk, so r663 is the checkout.
-  'gtest_revision': 'be1b3b66822cc3929f3da700973cef88bf45849a',  # svn r663
-  # gmock_revision was 453; r453 did not touch trunk, so r451 is the checkout.
-  'gmock_revision': 'd138e25941faa1a80f11a8e4cf2c7636402cc720',  # svn r451
+  # gtest and gmock are the pins from Chromium 49's own DEPS, read out of
+  # chromium/src@92d77538:DEPS. Both are 2015-07-28, fourteen minutes apart.
+  #
+  # Note gtest's *repository* changes with this: Chromium had already moved
+  # to the GitHub mirror by M49, which is a different SHA space from the old
+  # googlecode one, so the pins are not comparable. Nothing moves around on
+  # disk though -- 6f8a6643 still predates googletest's mid-2015 merge with
+  # gmock, so the top level is still include/, src/, test/, msvc/ rather than
+  # the later googletest/ + googlemock/ split.
+  #
+  # The M37 pins these replace, which were resolved from SVN footers and are
+  # not recoverable from the new repository:
+  #   external/googletest @ be1b3b66822cc3929f3da700973cef88bf45849a  # r663
+  #   external/googlemock @ d138e25941faa1a80f11a8e4cf2c7636402cc720  # r451
+  # (DEPS.sawbuck asked for gtest r664 and gmock r453; neither touched trunk,
+  # so r663 and r451 were what an SVN checkout at those pins produced.)
+  'gtest_revision': '6f8a66431cb592dad629028a50b3dd418a408c87',   # 2015-07-28, M49
+  'gmock_revision': '0421b6f358139f02e102c9c332ce19a33faf75be',   # 2015-07-28, M49
   'gyp_revision': '1a622e23d0c344c55ccac285cab60c2ab991ac9a',    # svn r1919
   'gyp_next_revision': 'b5b1525b5b834559d9b84d4eb48117adc3dedb23',  # v0.22.4
 }
@@ -167,14 +186,18 @@ deps = {
   # 'tools/win':
   #   '{chromium_git}/chromium/src/tools/win.git@{tools_win_revision}',
 
-  # Supplies gtest.gyp and gmock.gyp -- the build files, not the sources, which
-  # come from the two standalone repositories below.
+  # Supplies gtest.gyp, gtest.gypi and gmock.gyp -- the build files, not the
+  # sources, which come from the two standalone repositories below.
   'testing':
     '{chromium_git}/chromium/src/testing.git@{testing_revision}',
   'testing/gmock':
     '{chromium_git}/external/googlemock.git@{gmock_revision}',
+  # Not external/googletest: that is the old googlecode mirror, which Chromium
+  # had already left by M49. Changing a dep's URL is something gclient does not
+  # always resolve on its own -- if a sync complains about this path, delete
+  # testing/gtest and sync again.
   'testing/gtest':
-    '{chromium_git}/external/googletest.git@{gtest_revision}',
+    '{chromium_git}/external/github.com/google/googletest.git@{gtest_revision}',
 
   # Not fetched. This was GYP at its original r1919 pin, kept for a while so
   # the known-good baseline stayed reproducible. That rationale is gone: the
