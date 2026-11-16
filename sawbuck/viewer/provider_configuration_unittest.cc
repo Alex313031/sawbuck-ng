@@ -17,6 +17,7 @@
 
 #include <atlbase.h>
 #include <string>
+#include <vector>
 #include "gtest/gtest.h"
 #include "sawbuck/viewer/registry_test.h"
 #include "sawbuck/viewer/const_config.h"
@@ -149,6 +150,60 @@ TEST_F(ProviderConfigurationTest, ReadSettings) {
   set = &settings.settings()[1];
   EXPECT_EQ(2, set->log_level);
   EXPECT_EQ(0x1, set->enable_flags);
+}
+
+// Round trips the default registrations: write them, read them back through
+// the same code the viewer uses, and check they survived. This is what makes
+// RegisterDefaultProviders worth having as a menu command -- the failure it
+// guards against is not an error return but a wrong mask or level, which
+// shows up only as a provider dialog checkbox that quietly does nothing.
+TEST_F(ProviderConfigurationTest, RegisterDefaultProviders) {
+  ProviderConfiguration settings;
+  ASSERT_EQ(ERROR_SUCCESS, settings.RegisterDefaultProviders());
+  ASSERT_TRUE(settings.ReadProviders());
+
+  std::vector<ProviderConfiguration::Settings> expected;
+  ProviderConfiguration::GetDefaultProviders(&expected);
+  ASSERT_FALSE(expected.empty());
+  ASSERT_EQ(expected.size(), settings.settings().size());
+
+  // ReadProviders enumerates by key name, which is the GUID string, so it
+  // comes back sorted rather than in table order. Match on the GUID.
+  for (size_t i = 0; i < expected.size(); ++i) {
+    const ProviderConfiguration::Settings* actual = NULL;
+    for (size_t j = 0; j < settings.settings().size(); ++j) {
+      if (settings.settings()[j].provider_guid == expected[i].provider_guid) {
+        actual = &settings.settings()[j];
+        break;
+      }
+    }
+    ASSERT_TRUE(actual != NULL) << "Missing provider "
+                                << expected[i].provider_name;
+
+    EXPECT_STREQ(expected[i].provider_name.c_str(),
+                 actual->provider_name.c_str());
+    EXPECT_EQ(expected[i].log_level, actual->log_level);
+    EXPECT_EQ(expected[i].enable_flags, actual->enable_flags);
+
+    // Flags come back sorted by key name too, so compare as a set.
+    ASSERT_EQ(expected[i].flag_names.size(), actual->flag_names.size())
+        << "Wrong flag count for " << expected[i].provider_name;
+    for (size_t k = 0; k < expected[i].flag_names.size(); ++k) {
+      bool found = false;
+      for (size_t m = 0; m < actual->flag_names.size(); ++m) {
+        if (actual->flag_names[m].first == expected[i].flag_names[k].first) {
+          EXPECT_EQ(expected[i].flag_names[k].second,
+                    actual->flag_names[m].second)
+              << "Wrong mask for " << expected[i].provider_name << " flag "
+              << expected[i].flag_names[k].first;
+          found = true;
+          break;
+        }
+      }
+      EXPECT_TRUE(found) << "Missing flag " << expected[i].flag_names[k].first
+                         << " for " << expected[i].provider_name;
+    }
+  }
 }
 
 TEST_F(ProviderConfigurationTest, WriteSettings) {

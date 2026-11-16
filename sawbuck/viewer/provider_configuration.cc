@@ -16,7 +16,9 @@
 #include "sawbuck/viewer/provider_configuration.h"
 
 #include <atlbase.h>
+#include <string>
 #include "base/logging.h"
+#include "base/win/registry.h"
 #include "sawbuck/viewer/const_config.h"
 
 ProviderConfiguration::ProviderConfiguration() {
@@ -24,6 +26,204 @@ ProviderConfiguration::ProviderConfiguration() {
 
 void ProviderConfiguration::Copy(const ProviderConfiguration& other) {
   settings_ = other.settings_;
+}
+
+namespace {
+
+// A named enable-flag bit, as it appears under a provider's Flags subkey:
+// the key name is the label the provider dialog shows, and its default value
+// is the mask.
+struct FlagEntry {
+  const wchar_t* name;
+  DWORD mask;
+};
+
+// Shared by the providers that use Chromium's base logging, and the same two
+// entries installer\chrome_log_provider.wxi writes.
+const FlagEntry kChromeLogFlags[] = {
+  { L"Stack Trace", 1 },
+  { L"Text Only", 2 },
+};
+
+// Omaha's own flag set. LC_ALL is 4094 rather than 4095 because it covers the
+// LC_* bits without Stack Trace.
+const FlagEntry kOmahaFlags[] = {
+  { L"Stack Trace", 1 },
+  { L"LC_LOGGING", 2 },
+  { L"LC_UTIL", 4 },
+  { L"LC_SETUP", 8 },
+  { L"LC_SHELL", 16 },
+  { L"LC_CORE", 32 },
+  { L"LC_JS", 64 },
+  { L"LC_PLUGIN", 128 },
+  { L"LC_SERVICE", 256 },
+  { L"LC_OPT", 512 },
+  { L"LC_NET", 1024 },
+  { L"LC_REPORT", 2048 },
+  { L"LC_ALL", 4094 },
+};
+
+const FlagEntry kStackTraceOnlyFlags[] = {
+  { L"Stack Trace", 1 },
+};
+
+struct DefaultProvider {
+  // The provider GUID, in the registry string form used as the key name.
+  const wchar_t* guid;
+  // Display name, stored as the key's default value.
+  const wchar_t* name;
+  DWORD default_level;
+  DWORD default_flags;
+  const FlagEntry* flags;
+  size_t num_flags;
+};
+
+// Must stay in step with installer\sawbuck.wxs. The whole point of this table
+// is that a zip distribution registers exactly what the MSI does, so a
+// provider added in one place belongs in the other.
+//
+// Omaha is Google Update and IE Toolbar is Google Toolbar for Internet
+// Explorer; both products are discontinued and both entries are inherited
+// from upstream. They are kept only so the two lists match.
+const DefaultProvider kDefaultProviders[] = {
+  // Chrome, and every Chromium-based browser that builds chrome/ -- they all
+  // share this GUID. See the note in sawbuck.wxs.
+  { L"{7FE69228-633E-4f06-80C1-527FEA23E3A7}", L"Chromium", 4, 1,
+    kChromeLogFlags, arraysize(kChromeLogFlags) },
+  // Sawbuck's own logs default to ERROR only, so capturing does not drown the
+  // view in Sawbuck's own output.
+  { L"{C43B1318-C63D-465b-BCF4-7A89A369F8ED}", L"Sawbuck", 1, 1,
+    kChromeLogFlags, arraysize(kChromeLogFlags) },
+  { L"{93BCE0BF-3FAF-43b1-9E28-BEB6FAB5ECE7}", L"Chrome Setup", 4, 1,
+    kChromeLogFlags, arraysize(kChromeLogFlags) },
+  { L"{3DADA31D-19EF-4dc1-B345-037927193422}", L"Chrome Perf Traces", 0, 0,
+    NULL, 0 },
+  { L"{9B18BFF9-915E-4cc1-9C3E-F4AC112CB36C}", L"Omaha", 4, 4095,
+    kOmahaFlags, arraysize(kOmahaFlags) },
+  { L"{79FDF710-2D7F-488f-B00C-C6EFAE507169}", L"IE Toolbar", 4, 1,
+    kStackTraceOnlyFlags, arraysize(kStackTraceOnlyFlags) },
+};
+
+}  // namespace
+
+// static
+void ProviderConfiguration::GetDefaultProviders(
+    std::vector<Settings>* providers) {
+  DCHECK(providers != NULL);
+  providers->clear();
+
+  for (size_t i = 0; i < arraysize(kDefaultProviders); ++i) {
+    const DefaultProvider& entry = kDefaultProviders[i];
+
+    Settings settings = {};
+    // The table stores GUIDs in the registry string form, because that form
+    // is also the key name, so there is one spelling to keep right.
+    HRESULT hr = ::CLSIDFromString(entry.guid, &settings.provider_guid);
+    if (FAILED(hr)) {
+      NOTREACHED() << "Malformed GUID in kDefaultProviders: " << entry.guid;
+      continue;
+    }
+
+    settings.provider_name = entry.name;
+    settings.log_level =
+        static_cast<base::win::EtwEventLevel>(entry.default_level);
+    settings.enable_flags =
+        static_cast<base::win::EtwEventFlags>(entry.default_flags);
+    for (size_t j = 0; j < entry.num_flags; ++j) {
+      settings.flag_names.push_back(
+          std::make_pair(std::wstring(entry.flags[j].name),
+                         entry.flags[j].mask));
+    }
+
+    providers->push_back(settings);
+  }
+}
+
+LONG ProviderConfiguration::RegisterDefaultProviders() {
+  // The native view explicitly, which is the one ReadProviders prefers. The
+  // installer is a 32-bit MSI so its writes land in WOW6432Node, and
+  // ReadProviders reads both; writing a named view here keeps this command
+  // from depending on whether Sawbuck itself is 32- or 64-bit, which would
+  // otherwise put the keys somewhere different for each build. Ignored on
+  // 32-bit Windows, where there is no redirection.
+  REGSAM access = KEY_READ | KEY_WRITE | KEY_WOW64_64KEY;
+
+  base::win::RegKey providers_key;
+  LONG err = providers_key.Create(HKEY_LOCAL_MACHINE,
+                                  config::kProviderNamesKey, access);
+  if (err != ERROR_SUCCESS) {
+    // Retry without naming a view, for the same reason ReadProviders makes an
+    // unqualified attempt: the unit tests point HKLM at a subkey of HKCU with
+    // RegOverridePredefKey, and the view flags are not obviously harmless
+    // against an override handle. This cannot mask a real permission problem,
+    // because that fails either way. Everything below uses whichever access
+    // worked, so the whole set lands in one view.
+    access = KEY_READ | KEY_WRITE;
+    err = providers_key.Create(HKEY_LOCAL_MACHINE, config::kProviderNamesKey,
+                               access);
+  }
+  if (err != ERROR_SUCCESS) {
+    LOG(ERROR) << "Unable to create the provider names key, error " << err;
+    return err;
+  }
+
+  std::vector<Settings> providers;
+  GetDefaultProviders(&providers);
+
+  for (size_t i = 0; i < providers.size(); ++i) {
+    const Settings& provider = providers[i];
+
+    wchar_t guid_string[40] = {};
+    if (!::StringFromGUID2(provider.provider_guid, guid_string,
+                           arraysize(guid_string))) {
+      NOTREACHED() << "Unable to format a provider GUID";
+      continue;
+    }
+
+    base::win::RegKey key;
+    err = key.Create(providers_key.Handle(), guid_string, access);
+    if (err == ERROR_SUCCESS) {
+      // The display name is the key's default value, which is what
+      // ReadProviders queries for it.
+      err = key.WriteValue(NULL, provider.provider_name.c_str());
+    }
+    if (err == ERROR_SUCCESS)
+      err = key.WriteValue(config::kProviderDefaultLevelValue,
+                           static_cast<DWORD>(provider.log_level));
+    if (err == ERROR_SUCCESS)
+      err = key.WriteValue(config::kProviderDefaultFlagsValue,
+                           static_cast<DWORD>(provider.enable_flags));
+    if (err != ERROR_SUCCESS) {
+      LOG(ERROR) << "Unable to register provider " << provider.provider_name
+                 << ", error " << err;
+      return err;
+    }
+
+    if (provider.flag_names.empty())
+      continue;
+
+    base::win::RegKey flags;
+    err = flags.Create(key.Handle(), config::kProviderFlagsKey, access);
+    for (size_t j = 0;
+         err == ERROR_SUCCESS && j < provider.flag_names.size(); ++j) {
+      base::win::RegKey flag;
+      err = flag.Create(flags.Handle(), provider.flag_names[j].first.c_str(),
+                        access);
+      if (err == ERROR_SUCCESS) {
+        // Each flag's mask is its key's default value, matching how
+        // ReadProviders reads them back.
+        err = flag.WriteValue(
+            NULL, static_cast<DWORD>(provider.flag_names[j].second));
+      }
+    }
+    if (err != ERROR_SUCCESS) {
+      LOG(ERROR) << "Unable to write the flags for provider "
+                 << provider.provider_name << ", error " << err;
+      return err;
+    }
+  }
+
+  return ERROR_SUCCESS;
 }
 
 bool ProviderConfiguration::ReadProviders() {

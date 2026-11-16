@@ -79,6 +79,7 @@ BEGIN
         MENUITEM "&Symbol Path...",             ID_LOG_SYMBOLPATH
         MENUITEM "&Filter...\tCtrl+L",          ID_LOG_FILTER
         MENUITEM "Configure &Providers...",     ID_LOG_CONFIGUREPROVIDERS
+        MENUITEM "&Register Default Providers", ID_LOG_REGISTER_PROVIDERS
         MENUITEM "&Capture\tCtrl+E",            ID_LOG_CAPTURE
     END
     POPUP "&Help"

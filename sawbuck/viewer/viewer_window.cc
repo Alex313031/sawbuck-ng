@@ -599,6 +599,49 @@ LRESULT ViewerWindow::OnConfigureProviders(WORD code,
   return 0;
 }
 
+LRESULT ViewerWindow::OnRegisterProviders(WORD code,
+                                          LPARAM lparam,
+                                          HWND wnd,
+                                          BOOL& handled) {
+  LONG err = settings_.RegisterDefaultProviders();
+
+  if (err != ERROR_SUCCESS) {
+    // Just the code. logging::SystemErrorCodeToString would give the text,
+    // but it returns a std::string from FormatMessageA -- ANSI, not UTF-8 --
+    // so widening it correctly needs more machinery than the message is
+    // worth. Naming the one error anyone will actually hit is more use.
+    std::wstring message = base::StringPrintf(
+        L"Could not write the default log provider registrations.\n\n"
+        L"Error %d.\n\n"
+        L"These live under HKEY_LOCAL_MACHINE, so writing them needs "
+        L"administrator rights -- error 5 is access denied.",
+        err);
+    ::MessageBox(m_hWnd, message.c_str(), L"Register Default Providers",
+                 MB_OK | MB_ICONERROR);
+    return 0;
+  }
+
+  // Pick up what was just written. ReadProviders replaces the provider list
+  // wholesale and ReadSettings layers the saved per-provider levels back over
+  // it, so this is the same pair the constructor runs. EnableProviders then
+  // applies them to a capture session if one is running, which matches what
+  // OnConfigureProviders does once the dialog is accepted -- without it a
+  // provider registered mid-session would not start producing events until
+  // capture was stopped and restarted.
+  settings_.ReadProviders();
+  settings_.ReadSettings();
+  EnableProviders(settings_);
+
+  std::wstring message = base::StringPrintf(
+      L"Registered %d default log providers.\n\n"
+      L"They are now listed under Configure Providers.",
+      static_cast<int>(settings_.settings().size()));
+  ::MessageBox(m_hWnd, message.c_str(), L"Register Default Providers",
+               MB_OK | MB_ICONINFORMATION);
+
+  return 0;
+}
+
 LRESULT ViewerWindow::OnToggleCapture(WORD code,
                                       LPARAM lparam,
                                       HWND wnd,

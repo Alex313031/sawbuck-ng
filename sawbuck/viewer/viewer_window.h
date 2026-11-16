@@ -61,6 +61,7 @@ class ViewerWindow
     COMMAND_ID_HANDLER(ID_FILE_EXIT, OnExit)
     COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAbout)
     COMMAND_ID_HANDLER(ID_LOG_CONFIGUREPROVIDERS, OnConfigureProviders)
+    COMMAND_ID_HANDLER(ID_LOG_REGISTER_PROVIDERS, OnRegisterProviders)
     COMMAND_ID_HANDLER(ID_LOG_CAPTURE, OnToggleCapture)
     COMMAND_ID_HANDLER(ID_LOG_SYMBOLPATH, OnSymbolPath)
     // Forward other commands to the client window.
@@ -118,6 +119,8 @@ class ViewerWindow
       BOOL& handled);
   LRESULT OnToggleCapture(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
   LRESULT OnSymbolPath(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
+  LRESULT OnRegisterProviders(WORD code, LPARAM lparam, HWND wnd,
+                              BOOL& handled);
 
   virtual BOOL OnIdle();
   virtual BOOL PreTranslateMessage(MSG* pMsg);

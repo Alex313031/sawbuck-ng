@@ -30,6 +30,20 @@ class ProviderConfiguration {
   // Reads the provider information from root_key.
   bool ReadProviders();
 
+  // Writes the default provider registrations under HKLM, the same set
+  // installer\sawbuck.wxs writes. This exists so a zip distribution is
+  // equivalent to running the MSI: the WiX installer cannot be used
+  // everywhere Sawbuck runs, and without these registrations the provider
+  // list is empty and nothing can be captured.
+  //
+  // Does not touch the caller's settings; follow a successful call with
+  // ReadProviders and ReadSettings to pick the new registrations up.
+  //
+  // Returns ERROR_SUCCESS, or the Win32 error from the first key that could
+  // not be written -- ERROR_ACCESS_DENIED if the process is not elevated.
+  // Keys written before a failure are left in place.
+  LONG RegisterDefaultProviders();
+
   // Read and write provider settings from/to root_key.
   bool ReadSettings();
   bool WriteSettings();
@@ -54,6 +68,20 @@ class ProviderConfiguration {
 
   // Accessor for the current settings.
   const std::vector<Settings>& settings() const { return settings_; }
+
+  // The registrations RegisterDefaultProviders writes, as Settings. Declared
+  // after Settings because it needs the type.
+  //
+  // Exposed rather than kept private so the round trip is testable: register,
+  // ReadProviders, and compare against this. Without it a test can only
+  // assert that registering returned success, which would not catch a wrong
+  // flag mask or default level -- and those fail silently, as a checkbox in
+  // the provider dialog that does nothing.
+  //
+  // This is also the single description of the set. RegisterDefaultProviders
+  // writes whatever this returns, so there is one list rather than one to
+  // write and one to verify.
+  static void GetDefaultProviders(std::vector<Settings>* providers);
 
  private:
   std::vector<Settings> settings_;
