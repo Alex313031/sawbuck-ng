@@ -57,6 +57,51 @@
   # sawbuck_targets.gypi instead, which the Sawbuck .gyp files include
   # explicitly.
   'target_defaults': {
+    # Build output goes to out/<Config>_<arch>, not build/<Config>.
+    #
+    # common.gypi sets OutputDirectory once, on the Common_Base configuration
+    # that all four concrete configurations inherit:
+    #     <(DEPTH)\build\<(build_dir_prefix)$(ConfigurationName)
+    # and build_dir_prefix is declared '' and never set to anything. That has
+    # two problems.
+    #
+    #   * build/ is a directory gclient syncs. Compiled output inside a
+    #     dependency is output that re-syncing the dependency destroys --
+    #     tools/sync_deps.py does an rmtree, so the M49 build_revision bump
+    #     would have taken the whole build tree with it. It is also invisible
+    #     to git status, because .gitignore ignores /build/ wholesale.
+    #   * GYP names the 64-bit configurations Debug_x64 and Release_x64, but
+    #     the msvs generator strips that suffix when emitting MSVS
+    #     configuration names -- _ConfigBaseName() in generator/msvs.py drops
+    #     a trailing '_' + platform -- so both Win32 and x64 see
+    #     $(ConfigurationName) == 'Debug'. With build_dir_prefix empty, the
+    #     32- and 64-bit builds therefore share one OutDir, and one IntDir
+    #     with it, since that is $(OutDir)\obj\$(ProjectName).
+    #
+    # Setting the directory on the per-platform abstract configurations fixes
+    # both at once. Every concrete configuration inherits
+    # ['Common_Base', '<arch>_Base', '<Debug|Release>_Base'], and GYP merges
+    # msvs_configuration_attributes along that chain in order, so these win
+    # over Common_Base. IntermediateDirectory is left alone and follows.
+    #
+    # This is in sawbuck.gypi rather than patches/ on purpose: it needs no
+    # rebasing when build_revision moves, which four patches against
+    # common.gypi already do.
+    'configurations': {
+      'x86_Base': {
+        'abstract': 1,
+        'msvs_configuration_attributes': {
+          'OutputDirectory': '<(DEPTH)\\out\\$(ConfigurationName)_x86',
+        },
+      },
+      'x64_Base': {
+        'abstract': 1,
+        'msvs_configuration_attributes': {
+          'OutputDirectory': '<(DEPTH)\\out\\$(ConfigurationName)_x64',
+        },
+      },
+    },
+
     'conditions': [
       ['OS=="win"', {
         'defines': [

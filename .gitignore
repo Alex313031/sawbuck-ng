@@ -54,6 +54,7 @@
 *.pyc
 
 # Ignore build output directories
+/out/
 /sawbuck/py/etw/build/
 
 # Ignore doxygen output.
