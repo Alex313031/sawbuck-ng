@@ -305,9 +305,12 @@ class MakeTestData: public testing::Test {
 
     // Issue end-of collection notifications for all remaining.
     for (size_t i = 0; i < testing::kNumProcesses - 1; ++i) {
-      const KernelProcessEvents::ProcessInfo& process =
+      // Not 'process' -- that shadowed the one started and ended just above
+      // (C4456), which made it easy to misread this loop as repeating that
+      // same process rather than walking the others.
+      const KernelProcessEvents::ProcessInfo& remaining =
           testing::process_list[i];
-      (this->*event_func)(process,
+      (this->*event_func)(remaining,
                           STILL_ACTIVE,
                           kernel_log_types::kProcessCollectionEnded);
     }

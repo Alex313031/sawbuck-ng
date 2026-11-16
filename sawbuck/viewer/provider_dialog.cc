@@ -212,7 +212,13 @@ void ProviderDialog::DoEnableBitsPopupMenu(int item) {
   menu.AppendMenu(MF_STRING, kSelectNone, L"None");
 
   for (size_t i = 0; i < settings->flag_names.size(); ++i) {
-    UINT_PTR command = kMaskOffset + i;
+    // Narrowed once, here. AppendMenu takes UINT_PTR because that argument
+    // doubles as an HMENU for submenus, but this is only ever a command id,
+    // and CheckMenuItem below takes a UINT -- so leaving it pointer-sized
+    // only moved the conversion to that call, where it read as a C4244 on
+    // x64. Safe: the id is kMaskOffset plus a flag index, and a provider has
+    // a handful of flags.
+    UINT command = static_cast<UINT>(kMaskOffset + i);
     menu.AppendMenu(MF_STRING, command, settings->flag_names[i].first.c_str());
     base::win::EtwEventFlags flags = settings->flag_names[i].second;
     if (flags == (flags & settings->enable_flags))
@@ -308,7 +314,10 @@ void ProviderDialog::DrawDropDown(NMLVCUSTOMDRAW* lv_cust, int col) {
 
   // Calculate the dropdown rect size.
   int dropdown_width = ::GetSystemMetrics(SM_CXVSCROLL);
-  int item = lv_cust->nmcd.dwItemSpec;
+  // dwItemSpec is DWORD_PTR, so this narrows on x64. Safe because for a
+  // list-view custom draw it carries the item index, bounded by the item
+  // count, but the cast says so rather than leaving a C4244.
+  int item = static_cast<int>(lv_cust->nmcd.dwItemSpec);
   RECT rc = {};
   providers_.GetSubItemRect(item, col, LVIR_BOUNDS, &rc);
   rc.left = rc.right - dropdown_width;

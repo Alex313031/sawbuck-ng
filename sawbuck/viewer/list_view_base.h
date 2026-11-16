@@ -85,24 +85,28 @@ void ListViewBase<ImplClass, WinTraits>::AddColumns(
   if (ERROR_SUCCESS == settings.Open(HKEY_CURRENT_USER,
                                      key_name,
                                      KEY_READ)) {
-    std::vector<int> cols;
-    cols.resize(N);
+    // Named 'values' rather than 'cols': it shadowed the parameter of that
+    // name, which is a different type holding different data -- ColumnInfo
+    // titles and default widths, against the order indices and then the saved
+    // widths read back here (C4457).
+    std::vector<int> values;
+    values.resize(N);
 
-    ULONG len = cols.size() * sizeof(cols[0]);
+    ULONG len = values.size() * sizeof(values[0]);
     if (ERROR_SUCCESS == settings.QueryBinaryValue(order_value_name,
-                                                   &cols[0],
+                                                   &values[0],
                                                    &len) &&
-        len == cols.size() * sizeof(cols[0])) {
-      SetColumnOrderArray(cols.size(), &cols[0]);
+        len == values.size() * sizeof(values[0])) {
+      SetColumnOrderArray(values.size(), &values[0]);
     }
 
-    len = cols.size() * sizeof(cols[0]);
+    len = values.size() * sizeof(values[0]);
     if (ERROR_SUCCESS == settings.QueryBinaryValue(width_value_name,
-                                                   &cols[0],
+                                                   &values[0],
                                                    &len) &&
-        len == cols.size() * sizeof(cols[0])) {
+        len == values.size() * sizeof(values[0])) {
       for (int col = 0; col < N; ++col) {
-        SetColumnWidth(col, cols[col]);
+        SetColumnWidth(col, values[col]);
       }
     }
   }
@@ -111,27 +115,30 @@ void ListViewBase<ImplClass, WinTraits>::AddColumns(
 template <class ImplClass, class WinTraits>
 template <int N>
 void ListViewBase<ImplClass, WinTraits>::SaveColumns(
-    const ColumnInfo (&cols)[N], const wchar_t* key_name,
+    // Unnamed deliberately: saving reads the live column order and widths out
+    // of the control, so only the array's extent N is wanted here. The
+    // parameter exists to deduce it, and naming it only produced a C4100.
+    const ColumnInfo (&)[N], const wchar_t* key_name,
     const wchar_t* order_value_name, const wchar_t* width_value_name) {
   // Save column order and widths.
   CRegKey settings;
   if (ERROR_SUCCESS == settings.Create(HKEY_CURRENT_USER,
                                        key_name)) {
-    std::vector<int> cols;
-    cols.resize(N);
+    std::vector<int> values;
+    values.resize(N);
 
-    if (GetColumnOrderArray(cols.size(), &cols[0])) {
+    if (GetColumnOrderArray(values.size(), &values[0])) {
       settings.SetBinaryValue(order_value_name,
-                              &cols[0],
-                              cols.size() * sizeof(cols[0]));
+                              &values[0],
+                              values.size() * sizeof(values[0]));
     }
 
     for (int col = 0; col < N; ++col)
-      cols[col] = GetColumnWidth(col);
+      values[col] = GetColumnWidth(col);
 
     settings.SetBinaryValue(width_value_name,
-                            &cols[0],
-                            cols.size() * sizeof(cols[0]));
+                            &values[0],
+                            values.size() * sizeof(values[0]));
   } else {
     LOG(ERROR) << "Unable to open key " << key_name;
   }

@@ -101,7 +101,11 @@ void SymbolLookupService::OnModuleLoad(
   std::wstring file_path(module_info.image_file_name);
   // Map device paths to drive paths.
   DWORD drives = ::GetLogicalDrives();
-  char drive = 'A';
+  // wchar_t, not char: this only ever ends up in the wide 'device' buffer
+  // below, and narrowing a char into it is ill-formed in a braced initializer
+  // (C4838) -- char is signed here, so its range is not a subset of
+  // wchar_t's. It happened to work because 'A'..'Z' are positive.
+  wchar_t drive = L'A';
   for (; drives != 0; drives >>= 1, ++drive) {
     if (drives & 1) {
       wchar_t device_path[1024] = {};
