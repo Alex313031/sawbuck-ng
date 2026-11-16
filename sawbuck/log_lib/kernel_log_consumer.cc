@@ -211,6 +211,62 @@ bool ParseProcessEvent(const void* data, size_t data_len,
   return true;
 }
 
+// Parses a version 4 process event, which Windows 8 and later emit.
+//
+// The version 4 prefix layout has not been confirmed against a real log -- see
+// the note on ProcessInfo32V4 in kernel_log_types.h -- so both candidates are
+// tried. This is safe rather than reckless: ParseProcessEvent validates the
+// SID it lands on, so a wrong prefix size makes it return false instead of
+// misparsing. Whichever layout matches is reported once per log, so the
+// correct one can be established from real data.
+template <class V4Type, class V3Type>
+bool ParseProcessEventV4(const void* data, size_t data_len,
+                         KernelProcessEvents::ProcessInfo* process_info,
+                         DWORD* exit_status, const char* log_kind) {
+  const char* matched = "the version 4 layout (with Flags)";
+  bool parsed = ParseProcessEvent<V4Type>(data, data_len, process_info,
+                                          exit_status);
+  if (!parsed) {
+    matched = "the version 3 layout";
+    parsed = ParseProcessEvent<V3Type>(data, data_len, process_info,
+                                       exit_status);
+  }
+
+  // Report the outcome once, not once per process event.
+  static bool reported = false;
+  if (!reported) {
+    reported = true;
+    if (parsed) {
+      LOG(INFO) << "Process info version 4 (" << log_kind << ") parses with "
+                << matched << ".";
+    } else {
+      LOG(ERROR) << "Process info version 4 (" << log_kind << ") matches "
+                 << "neither the version 3 nor the version 4 layout; process "
+                 << "names and command lines will be unavailable.";
+    }
+  }
+
+  return parsed;
+}
+
+// Reports an unhandled process info version once per version, rather than once
+// per event. Windows emits a process event for every running process at the
+// start of a trace and for every create/exit after that, so logging per event
+// buried the real log in thousands of identical lines.
+void ReportUnexpectedProcessInfoVersion(int version) {
+  // EVENT_TRACE_HEADER::Class.Version is a UCHAR, so this covers every
+  // possible value.
+  const int kMaxVersions = 256;
+  static bool reported[kMaxVersions] = {};
+  if (version >= 0 && version < kMaxVersions) {
+    if (reported[version])
+      return;
+    reported[version] = true;
+  }
+  LOG(ERROR) << "Unexpected process info version " << version
+             << "; process names and command lines will be unavailable.";
+}
+
 }  // namespace
 
 bool KernelProcessEvents::ProcessInfo::operator == (
@@ -487,10 +543,16 @@ bool KernelLogParser::ProcessProcessEvent(EVENT_TRACE* event) {
                                                  &exit_status);
         }
         break;
+      case 4: {
+          has_info =
+              ParseProcessEventV4<ProcessInfo64V4, ProcessInfo64V3>(
+                  event->MofData, event->MofLength, &process_info,
+                  &exit_status, "64-bit log");
+        }
+        break;
 
       default:
-        LOG(ERROR) << "Unexpected process info version "
-            << event->Header.Class.Version;
+        ReportUnexpectedProcessInfoVersion(event->Header.Class.Version);
         break;
     }
   } else {
@@ -522,10 +584,16 @@ bool KernelLogParser::ProcessProcessEvent(EVENT_TRACE* event) {
                                                  &exit_status);
         }
         break;
+      case 4: {
+          has_info =
+              ParseProcessEventV4<ProcessInfo32V4, ProcessInfo32V3>(
+                  event->MofData, event->MofLength, &process_info,
+                  &exit_status, "32-bit log");
+        }
+        break;
 
       default:
-        LOG(ERROR) << "Unexpected process info version "
-            << event->Header.Class.Version;
+        ReportUnexpectedProcessInfoVersion(event->Header.Class.Version);
         break;
     }
   }

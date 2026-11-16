@@ -294,6 +294,51 @@ struct ProcessInfo64V3 {
   // ImageFileName, ItemWString
 };
 
+// Windows 8 and later emit version 4, which older Sawbuck did not know about
+// at all -- it logged "Unexpected process info version 4" for every process
+// event and discarded the information.
+//
+// NOT yet verified against a real version 4 log, unlike every layout above.
+// Microsoft's MOF for Process_V4_TypeGroup1 adds a Flags field after
+// DirectoryTableBase, which is what these add; but the V2/V3 layouts here
+// already carry Unknown fields the MOF does not describe, so the documentation
+// is not a reliable guide on its own.
+//
+// Parsing therefore tries both this and the V3 layout -- see the version 4
+// case in kernel_log_consumer.cc. That is safe because ParseProcessEvent
+// validates the SID it lands on with IsValidSid, so a wrong prefix size fails
+// instead of silently misparsing. The consumer reports which layout matched,
+// once per log, so the right one can be confirmed from real data.
+struct ProcessInfo32V4 {
+  ULONG UniqueProcessKey;  // ItemPtr
+  ULONG ProcessId;  // ItemULong
+  ULONG ParentId;  // ItemULong
+  ULONG SessionId;  // ItemULong
+  ULONG ExitStatus;  // ItemUlong
+  ULONG PageTable;  // ItemPtr
+  ULONG Unknown1;
+  ULONG Unknown2;
+  ULONG Flags;  // New in version 4.
+  SID UserSID;  // ItemKSid
+  // ImageName, ItemAString
+  // ImageFileName, ItemWString
+};
+
+struct ProcessInfo64V4 {
+  ULONGLONG UniqueProcessKey;  // ItemPtr
+  ULONG ProcessId;  // ItemULong
+  ULONG ParentId;  // ItemULong
+  ULONG SessionId;  // ItemULong
+  ULONG ExitStatus;  // ItemUlong
+  ULONGLONG PageTable;  // ItemPtr
+  ULONGLONG Unknown1;
+  ULONGLONG Unknown2;
+  ULONG Flags;  // New in version 4.
+  SID UserSID;  // ItemKSid
+  // ImageName, ItemAString
+  // ImageFileName, ItemWString
+};
+
 }  // namespace kernel_log_types
 
 #endif  // SAWBUCK_LOG_LIB_KERNEL_LOG_TYPES_H_
