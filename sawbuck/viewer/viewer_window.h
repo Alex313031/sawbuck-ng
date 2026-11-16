@@ -130,6 +130,12 @@ class ViewerWindow
   void StopCapturing();
   bool StartCapturing();
 
+  // The text the status bar shows when there is nothing transient to
+  // report: "Capturing" while a session is live, "Ready" otherwise.
+  const wchar_t* GetIdleStatusText() const;
+  // Puts GetIdleStatusText in the status bar.
+  void SetIdleStatus();
+
  private:
   // Initializes the symbol path.
   void InitSymbolPath();

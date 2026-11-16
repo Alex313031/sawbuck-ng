@@ -194,13 +194,26 @@ void ViewerWindow::ImportLogFiles(const std::vector<base::FilePath>& paths) {
     ::MessageBox(m_hWnd, msg.c_str(), L"Error Importing Logs", MB_OK);
   }
 
-  UISetText(0, L"Ready");
-  UIUpdateStatusBar();
+  // Not a hardcoded "Ready": importing is only possible while not capturing
+  // today, but deriving it means this cannot go stale if that changes.
+  SetIdleStatus();
 }
 
 const wchar_t kLogFileFilter[] =
     L"Event Trace Files\0*.etl\0"
     L"All Files\n\0*.*\0";
+
+const wchar_t* ViewerWindow::GetIdleStatusText() const {
+  // log_controller_.session() is the authority on whether a trace session is
+  // live; SetCapture, StartCapturing and StopCapturing all derive from it
+  // rather than from a separate flag, so there is nothing to keep in step.
+  return log_controller_.session() != NULL ? L"Capturing" : L"Ready";
+}
+
+void ViewerWindow::SetIdleStatus() {
+  UISetText(0, GetIdleStatusText());
+  UIUpdateStatusBar();
+}
 
 void ViewerWindow::SetCapture(bool capture) {
   bool capturing = (log_controller_.session() != NULL);
@@ -218,6 +231,11 @@ void ViewerWindow::SetCapture(bool capture) {
   // Only allow import when not capturing.
   UIEnable(ID_FILE_IMPORT, !capture);
   UISetCheck(ID_LOG_CAPTURE, capture);
+
+  // Reflect the new state. This is the single place capture is turned on or
+  // off -- OnToggleCapture and the --start-capture switch both come through
+  // here -- so it is the only place that needs to.
+  SetIdleStatus();
 }
 
 LRESULT ViewerWindow::OnImport(
@@ -474,6 +492,15 @@ void ViewerWindow::UpdateStatus() {
     base::AutoLock lock(status_lock_);
     update_status_task_pending_ = false;
     status = status_;
+  }
+
+  // Symbol lookup drives this, and reports an empty string when it has
+  // nothing in flight. Blanking the bar then loses the one piece of state
+  // worth showing at rest, so fall back to the idle text -- which is how
+  // "Capturing" appears when nothing else is competing for the space.
+  if (status.empty()) {
+    SetIdleStatus();
+    return;
   }
 
   UISetText(0, status.c_str());
