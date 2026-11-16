@@ -1,3 +1,11 @@
+# Sawbuck-ng
+
+Sawbuck-ng is a maintained fork of [Sawbuck](https://code.google.com/archive/p/sawbuck/), a Chromium log viewer.
+
+Dependencies have been updated/restored, build support for Visual Studio 2022 added, with further enhancements planned. The original README is below:
+
+----
+
 Sawbuck is a log viewer and controller for Windows Chrome logging, and for other applications or plugins that use the logging facility in Chrome base.
 
 Logging in Chrome is integrated with Event Tracing for Windows (ETW), which allows ETW controllers like Sawbuck to control log verbosity at runtime. The Chrome logging integration also captures the call stack at the logging site, which can then be resolved and displayed by log viewers such as Sawbuck. 
