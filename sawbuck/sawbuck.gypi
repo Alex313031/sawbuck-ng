@@ -193,7 +193,46 @@
             # configuration. Note that <hash_map> is unaffected --
             # _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS above is not gated on
             # the standard version, so it keeps working either way.
-            'AdditionalOptions': ['/std:c++14'],
+            #
+            # /Zc:__cplusplus because without it MSVC reports __cplusplus as
+            # 199711L no matter what /std: says, and _MSVC_LANG -- the probe
+            # that is accurate on MSVC -- is used nowhere in this tree. Five
+            # places version-gate on __cplusplus and were all taking their
+            # pre-C++11 branch:
+            #
+            #   base/strings/safe_sprintf.cc:119 enables a static_assert that
+            #   numeric_limits<ssize_t>::max() is constexpr. The comment
+            #   there blames MSVS2013's library; VS2022's does mark it.
+            #
+            #   testing/gtest/include/gtest/internal/gtest-port.h:326 sets
+            #   GTEST_LANG_CXX11 to 1. This is the largest single effect of
+            #   the flag: it moves gtest and gmock onto std::tuple, rvalue
+            #   references and '= delete'. Everything that sees it has to
+            #   recompile together, so take this as a clean build rather than
+            #   an incremental one.
+            #
+            #   icu unicode/umachine.h:135 stops defining U_OVERRIDE and
+            #   U_FINAL to nothing and gives them override and final. An ICU
+            #   class that mislabels either becomes a hard error rather than
+            #   a warning -- upstream builds as C++11, so it should hold.
+            #
+            #   icu unicode/platform.h:667 takes U_HAVE_CHAR16_T from 0 to 1,
+            #   which only reaches U_DECLARE_UTF16 and u"" literals. UChar is
+            #   deliberately NOT gated on it: umachine.h:303-313 has that
+            #   typedef commented out as "type-incompatible with pre-C++11
+            #   callers", and Windows takes the U_SIZEOF_WCHAR_T==2 branch
+            #   instead. So UChar stays wchar_t and no call site in base_i18n
+            #   or here changes type.
+            #
+            #   icu putilimp.h:215 reaches the C++11 arm of
+            #   U_HAVE_STD_ATOMICS, but that arm still wants U_HAVE_ATOMIC,
+            #   which autoconf supplies and the MSVC build does not, so this
+            #   one should stay at 0.
+            #
+            # Set while still on C++14 on purpose: it moves "which branch
+            # compiles" by itself, which keeps the /std: bump a separate and
+            # smaller change.
+            'AdditionalOptions': ['/std:c++14', '/Zc:__cplusplus'],
           },
         },
       }],
