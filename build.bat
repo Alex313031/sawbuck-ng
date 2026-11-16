@@ -30,17 +30,28 @@ REM      directory if there is not one there already, which is where
 REM      gclient expects it: DEPS sets
 REM      use_relative_paths, and the solution entry names this directory, so
 REM      the file belongs one level above the repository root.
-REM   2. gclient sync --nohooks --force --reset --delete_unversioned_trees
-REM   3. gclient runhooks, which applies patches/ to the synced dependencies
-REM      and then runs tools/gyp_sawbuck.py to generate sawbuck/sawbuck.sln.
-REM   4. msbuild for Debug|Win32, Release|Win32, Debug|x64, Release|x64.
+REM   2. gclient sync --force --reset --delete_unversioned_trees, whose hooks
+REM      apply patches/ to the synced dependencies and then run
+REM      tools/gyp_sawbuck.py to generate sawbuck/sawbuck.sln.
+REM   3. msbuild for Debug|Win32, Release|Win32, Debug|x64, Release|x64.
 REM
-REM Two notes on that sync. --reset reverts the patches that patches/ applies
-REM to build/common.gypi, which is exactly why runhooks has to follow it;
-REM apply_patches.py puts them back and is a no-op if they are already there.
-REM And --force --reset is safe for your own work because the .gclient
-REM solution is "managed": False -- gclient syncs and resets the dependency
-REM checkouts but never touches the sawbuck-ng checkout itself.
+REM Three notes on that sync. --reset reverts the patches that patches/
+REM applies to build/common.gypi, so they have to be re-applied afterwards --
+REM which is what the hooks do: gclient runs them once the whole sync has
+REM finished, so apply_patches.py always sees a freshly reset tree and lands
+REM after the revert, not before it. This used to be --nohooks plus a
+REM separate 'gclient runhooks' to force that ordering; the ordering was
+REM already guaranteed, so the extra step was doing nothing. apply_patches.py
+REM is a no-op when the patches are already there, so a re-run is harmless
+REM either way.
+REM
+REM --force --reset is safe for your own work because the .gclient solution is
+REM "managed": False -- gclient syncs and resets the dependency checkouts but
+REM never touches the sawbuck-ng checkout itself.
+REM
+REM One cost of folding the two together: a hook failure now surfaces as a
+REM failure of this step rather than a step of its own, so read the tail of
+REM the gclient output to tell a sync problem from a patch or generation one.
 REM
 REM Building the solution also builds the run_unittests project, which runs
 REM the unit tests as a build step, so a test failure fails the build. To
@@ -101,8 +112,8 @@ echo ==========================================================
 
 REM ------------------------------------------------------- 0. Visual Studio
 REM Located through vswhere so this works from a plain cmd prompt and not
-REM only from a Developer Command Prompt. Done before the sync because
-REM runhooks needs it too: GYP cannot reliably detect VS2017 or newer on its
+REM only from a Developer Command Prompt. Done before the sync because the
+REM sync's hooks need it too: GYP cannot reliably detect VS2017 or newer on its
 REM own -- its probe reads a registry key those versions no longer write --
 REM so tools/gyp_sawbuck.py wants the version named explicitly. Setting it
 REM here is contained by this script's setlocal and does not leak out.
@@ -135,17 +146,17 @@ if not defined MSBUILD (
   goto :fail
 )
 if defined GYP_MSVS_VERSION (
-  echo [0/4] Using GYP_MSVS_VERSION=%GYP_MSVS_VERSION% from the environment.
+  echo [0/3] Using GYP_MSVS_VERSION=%GYP_MSVS_VERSION% from the environment.
 ) else if defined VS_YEAR (
   set "GYP_MSVS_VERSION=%VS_YEAR%"
-  echo [0/4] Visual Studio %VS_YEAR%, GYP_MSVS_VERSION set from vswhere.
+  echo [0/3] Visual Studio %VS_YEAR%, GYP_MSVS_VERSION set from vswhere.
 ) else (
-  echo [0/4] WARNING: could not determine the Visual Studio version. If
+  echo [0/3] WARNING: could not determine the Visual Studio version. If
   echo       generation fails, set GYP_MSVS_VERSION yourself, e.g. 2022.
 )
 
 if "%DO_SYNC%"=="0" (
-  echo [1-3/4] Skipping sync and generation ^(--no-sync^).
+  echo [1-2/3] Skipping sync and generation ^(--no-sync^).
   goto :build
 )
 
@@ -158,7 +169,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [1/4] Installing .gclient into %PARENT%
+echo [1/3] Installing .gclient into %PARENT%
 if not exist "%REPO%\gclient" (
   echo ERROR: %REPO%\gclient is missing. It is the sample solution file this
   echo        script installs; restore it from the repository.
@@ -185,24 +196,17 @@ REM ------------------------------------------------------------------ 2. sync
 REM 'call' matters: gclient is a batch file, and without it this script would
 REM exit as soon as gclient returned.
 echo.
-echo [2/4] gclient sync
-call gclient sync --nohooks --force --reset --delete_unversioned_trees
+echo [2/3] gclient sync ^(then its hooks: apply patches, generate the solution^)
+call gclient sync --force --reset --delete_unversioned_trees
 if errorlevel 1 (
-  echo ERROR: gclient sync failed.
-  goto :fail
-)
-
-REM -------------------------------------------------------------- 3. runhooks
-echo.
-echo [3/4] gclient runhooks ^(apply patches, then generate the solution^)
-call gclient runhooks
-if errorlevel 1 (
-  echo ERROR: gclient runhooks failed.
+  echo ERROR: gclient sync failed. If the sync itself succeeded, the failure
+  echo        is in a hook -- either tools/apply_patches.py or
+  echo        tools/gyp_sawbuck.py. Check the end of the output above.
   goto :fail
 )
 
 :build
-REM ----------------------------------------------------------------- 4. build
+REM ----------------------------------------------------------------- 3. build
 if not exist "%SLN%" (
   echo ERROR: %SLN% does not exist.
   echo        Run without --no-sync, or generate it with:
@@ -211,7 +215,7 @@ if not exist "%SLN%" (
 )
 
 echo.
-echo [4/4] Building with %MSBUILD%
+echo [3/3] Building with %MSBUILD%
 REM Each flavour is a 'call' to the :build_one routine below rather than a
 REM for loop, so that one failure does not stop the rest: a flavour that fails
 REM records itself in FAILED and the next one still runs. The routine also
