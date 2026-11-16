@@ -82,8 +82,18 @@
             '--success-file=<(success_file)',
             # SymSrv.dll abandons a critical section on
             # unlock on 32 bit systems
-            '--exception="dbghelp!SymCleanup,Locks,513"',
-            '--exception="dbghelp!SymCleanup,Leak,2304"',
+            #
+            # No inner quotes. run_unittests.py does a plain
+            # exception.split(',') on this value, so it wants the bare
+            # string, and GYP already wraps each argument in quotes of its
+            # own when it writes the command. The quotes that used to be
+            # here produced "--exception="dbghelp!SymCleanup,Locks,513"" in
+            # the generated project, which survives only because MSVCRT's
+            # argv parser happens to cancel the four quotes out -- and cmd
+            # re-parses the line once per 'call', of which the MSBuild
+            # generator emits two.
+            '--exception=dbghelp!SymCleanup,Locks,513',
+            '--exception=dbghelp!SymCleanup,Leak,2304',
             '<@(unittest_targets)',
           ],
         },

@@ -68,10 +68,14 @@ def RunOneTest(exe_path, target, exceptions):
   '''
   # The executable name is everything from the colon.
   exe_name = target.split(':')[-1]
-  test_path = os.path.join(exe_path, exe_name)
+  # '.exe' here rather than in the App Verifier branch only, which is where it
+  # used to be. The plain branch worked anyway because CreateProcess appends
+  # the extension itself, but it meant the two branches disagreed about what
+  # they were running and the OSError message below named a path that does not
+  # exist.
+  test_path = os.path.join(exe_path, exe_name) + '.exe'
 
   if verifier.HasAppVerifier():
-    test_path += '.exe'
     print("running test with appverifier ", target)
     (retval, errors) = verifier.RunTestWithVerifier(test_path)
 
