@@ -123,10 +123,10 @@ DEPS = [
     # third_party/wtl is committed in-tree, not fetched: it has no standalone
     # mirror anywhere and Chromium's copy is patched, so there is nothing to
     # sync it from. See DEPS.
-    ('third_party/zlib', 'chromium/src', CHROMIUM_SRC, 'third_party/zlib',
-     'src/third_party/zlib@271365'),
-    ('third_party/modp_b64', 'chromium/src', CHROMIUM_SRC, 'third_party/modp_b64',
-     'src/third_party/modp_b64@271365'),
+    ('third_party/zlib', 'chromium/src', CHROMIUM_SRC_M49, 'third_party/zlib',
+     'M49 branch point, master@{#369907}'),
+    ('third_party/modp_b64', 'chromium/src', CHROMIUM_SRC_M49, 'third_party/modp_b64',
+     'M49 branch point, master@{#369907}'),
     # Not fetched. Only base/allocator/allocator.gyp's 'tcmalloc_dir' refers to
     # it, and the allocator target is not in anything Sawbuck builds.
     # ('third_party/tcmalloc', 'chromium/src', CHROMIUM_SRC, 'third_party/tcmalloc',
@@ -137,8 +137,8 @@ DEPS = [
     # this file to exist. Only the .gyp file matters: libxml's actual sources
     # were a separate DEPS entry in Chromium and nothing Sawbuck builds links
     # them, so they are not fetched.
-    ('third_party/libxml', 'chromium/src', CHROMIUM_SRC, 'third_party/libxml',
-     'src/third_party/libxml@271365 (added; not in DEPS.sawbuck)'),
+    ('third_party/libxml', 'chromium/src', CHROMIUM_SRC_M49, 'third_party/libxml',
+     'M49 branch point (added; not in DEPS.sawbuck)'),
 
     # --- Standalone checkouts, each pinned separately by DEPS.sawbuck. ---
     # DEPS.sawbuck pinned icu46 at chrome_revision (r271365); the newest icu46

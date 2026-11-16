@@ -89,18 +89,27 @@ vars = {
   'base_revision': '7b907946fe89fbdb5ceab832a6c960b11aeb2437',            # 2016-01-15, M49
   'build_revision': '2e175f8fb88446c0bd4999bb5ab24677ddce63b6',           # 2016-01-15, M49
 
-  # Still M37 (SVN r271365). The dates are the pinned commit's own date; see
+  # Also at the Chromium 49 branch point. These are not in Chromium 49's own
+  # DEPS because they were in-tree by then, so "what M49 used" is simply the
+  # content at 92d77538. Each was resolved the same two ways as base and build
+  # -- Cr-Original-Commit-Position footer, then tree-hash comparison against
+  # chromium/src@92d77538:<path> -- and both agree.
+  'zlib_revision': '8ce285440282702dfe4935baa2aa2f6819bed292',            # 2016-01-14, M49
+  'modp_b64_revision': '781604dfe4c368363cec8c46d07dd9925e0c8f6b',        # 2015-10-08, M49
+  'libxml_revision': 'fc3da0e5d6c0914e019979489c50cd588d1fb23a',          # 2016-01-15, M49
+
+  # Still M37 (SVN r271365). testing/ has to move together with the gtest and
+  # gmock sources below, since it supplies their .gyp files -- so it is held
+  # back until those move. The dates are the pinned commit's own date; see
   # note 1 above.
   'testing_revision': 'cbc76319f284b6ab55fd1f36a954afea7f8aac03',         # 2014-05-16
-  # Not fetched; see the commented-out google_apis entry below. The resolved
-  # pin is kept here so restoring it needs no re-resolving.
+
+  # Resolved pins for entries that are no longer fetched, kept so restoring any
+  # of them needs no re-resolving. See the commented-out deps below.
   # 'google_apis_revision': '6c69993c84c1eed8d4194ad704a19b02be67cb58',   # 2014-05-15
-  'tools_win_revision': 'ea95f6435a0becd1fabd26d202a12690c762ead7',       # 2014-04-16
-  'code_coverage_revision': '23081ea84f5af2b0445e4475581ce5e3f8485164',   # 2013-11-14
-  'zlib_revision': '7e84479ea07c6fd65d77412bcbf735751f42e230',            # 2014-05-07
-  'modp_b64_revision': 'a73c4b6e07087ea5259e61618010a465a00e5253',        # 2014-04-07
-  'libxml_revision': '5a6abdfef348a88a5df848e731244e0c4844bfde',          # 2014-04-30
-  'tcmalloc_revision': '694f2a1366c4431e0c076474328ce6125aa897e0',        # 2014-05-18
+  # 'tools_win_revision': 'ea95f6435a0becd1fabd26d202a12690c762ead7',     # 2014-04-16
+  # 'code_coverage_revision': '23081ea84f5af2b0445e4475581ce5e3f8485164', # 2013-11-14
+  # 'tcmalloc_revision': '694f2a1366c4431e0c076474328ce6125aa897e0',      # 2014-05-18
 
   # Standalone repositories. These were already whole-repo checkouts in the old
   # file, so they port over directly; only the URLs changed.
