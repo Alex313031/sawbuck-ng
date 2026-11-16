@@ -24,6 +24,8 @@
 #include "base/message_loop/message_pump.h"
 #include "base/message_loop/message_pump_win.h"
 #include "sawbuck/viewer/viewer_window.h"
+#include "unicode/uclean.h"
+#include "unicode/utypes.h"
 
 #include <initguid.h>  // NOLINT
 #include "sawbuck/viewer/sawbuck_guids.h"  // NOLINT
@@ -147,6 +149,33 @@ int APIENTRY wWinMain(HINSTANCE instance,
 
   // Initialize ICU.
   CHECK(base::i18n::InitializeICU());
+
+  // InitializeICU succeeding is not the same as the data being usable. All it
+  // does on this path is mmap icudtl.dat and hand the pointer to
+  // udata_setCommonData, which registers it without parsing the package,
+  // checking the table of contents or comparing versions. A stale or
+  // mismatched data file therefore passes the CHECK above and only shows up
+  // later, item by item, as ICU lookups miss and fall back -- which renders as
+  // corrupted text rather than any kind of error.
+  //
+  // Two things make that easy to hit. The file name carries no version, on
+  // purpose: base/i18n/icu_util.cc says "Use an unversioned file name to
+  // simplify a icu version update down the road", so a 4.6 and a 54.1 data
+  // file are indistinguishable on disk. And it arrives in the output
+  // directory by way of a copy step, so an incremental build that decides the
+  // copy is up to date leaves the previous version in place -- which is
+  // exactly how this was found, on Build Solution rather than Rebuild
+  // Solution, after an ICU version bump.
+  //
+  // u_init forces the common data to be loaded and validated now, turning all
+  // of that into one loud failure at startup.
+  UErrorCode icu_status = U_ZERO_ERROR;
+  u_init(&icu_status);
+  CHECK(U_SUCCESS(icu_status))
+      << "ICU data is unusable: " << u_errorName(icu_status)
+      << ". icudtl.dat next to the executable is most likely stale or from a "
+      << "different ICU version -- this build expects " << U_ICU_VERSION
+      << ". A full rebuild, or deleting it and rebuilding, should replace it.";
 
   // Init logging to no file logging.
   logging::LoggingSettings settings;
