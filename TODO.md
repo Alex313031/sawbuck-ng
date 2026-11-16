@@ -6,3 +6,4 @@
  - Change registry keys, etc to use Alex313031 instead of Google
  - Compiler optimizations
  - "Component build" with base.dll, icu54.dll, winwrap.dll.
+ - Migrate symbol server URLs to HTTPS on Win7+

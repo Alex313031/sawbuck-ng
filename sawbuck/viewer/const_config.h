@@ -16,10 +16,27 @@
 #ifndef SAWBUCK_VIEWER_CONST_CONFIG_H_
 #define SAWBUCK_VIEWER_CONST_CONFIG_H_
 
+// The vendor\product prefix every Sawbuck key hangs off, under both HKLM and
+// HKCU. Was Software\Google\SawBuck upstream; renamed with the fork, and the
+// product spelling normalised to Sawbuck (the old constants mixed "SawBuck"
+// here with "Sawbuck" in the installer, which only worked because the
+// registry is case-insensitive).
+//
+// Defined once and concatenated below rather than written out three times:
+// installer\sawbuck.wxs has to spell the same paths by hand, and an installer
+// writing one path while the viewer reads another is a silent failure -- the
+// provider list simply comes up empty, with no error.
+//
+// Renaming orphans whatever an older build stored under the Google key:
+// window placement, column order and widths, saved filters and the symbol
+// path. Nothing migrates it. For the symbol path that is arguably a feature,
+// since InitSymbolPath only ever fabricates a default when no value exists.
+#define SAWBUCK_REGISTRY_ROOT L"Software\\Alex313031\\Sawbuck"
+
 namespace config {
 
 // Name of key under HKLM that stores provider configuration.
-const wchar_t kProviderNamesKey[] = L"Software\\Google\\SawBuck\\Providers";
+const wchar_t kProviderNamesKey[] = SAWBUCK_REGISTRY_ROOT L"\\Providers";
 
 // Per-provider DWORD value for default enable flags value.
 const wchar_t kProviderDefaultFlagsValue[] = L"default_flags";
@@ -29,10 +46,10 @@ const wchar_t kProviderDefaultLevelValue[] = L"default_level";
 const wchar_t kProviderFlagsKey[] = L"Flags";
 
 // Top-level settings key under HKCU.
-const wchar_t kSettingsKey[] = L"Software\\Google\\SawBuck";
+const wchar_t kSettingsKey[] = SAWBUCK_REGISTRY_ROOT;
 
 // Key that stores provider levels under HKCU.
-const wchar_t kProviderLevelsKey[] = L"Software\\Google\\SawBuck\\Levels";
+const wchar_t kProviderLevelsKey[] = SAWBUCK_REGISTRY_ROOT L"\\Levels";
 // Per-provider DWORD value for current log level.
 const wchar_t kProviderLevelValue[] = L"log_level";
 // Per-provider DWORD value for current enable flags.

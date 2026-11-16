@@ -112,7 +112,7 @@ limitations under the License.
     <!-- Define our program files foler -->
     <Directory Id='TARGETDIR' Name='SourceDir'>
       <Directory Id='ProgramFilesFolder'>
-        <Directory Id='ProgramFilesGoogleFolder' Name='Google'>
+        <Directory Id='ProgramFilesVendorFolder' Name='Alex313031'>
           <Directory Id='SAWBUCKAPPLICATIONDIRECTORY' Name='Sawbuck' />
         </Directory>
       </Directory>
@@ -138,7 +138,7 @@ limitations under the License.
         -->
         <RegistryValue
             Root='HKCU'
-            Key='Software\Google\Sawbuck'
+            Key='Software\Alex313031\Sawbuck'
             Name='installed'
             Type='integer'
             Value='1'
@@ -158,14 +158,31 @@ limitations under the License.
           Guid='{1161AE44-89DE-4144-882A-E98C389C4F07}'>
         <RegistryKey
             Root='HKLM'
-            Key='Software\Google\Sawbuck\Providers'
+            Key='Software\Alex313031\Sawbuck\Providers'
             Action='createAndRemoveOnUninstall'>
           <!--
               All the log providers that use Chrome base logging are
               defined with single common include file.
           -->
-          <!-- Chrome -->
-          <?define LogProviderName = 'Chrome'?>
+          <!--
+              Named for the engine rather than any one browser, because this
+              single entry covers every Chromium-based browser that builds
+              chrome/: Chromium, Google Chrome, Thorium and so on. They all
+              share this GUID, which is hard-coded as kChromeTraceProviderName
+              in chrome/common/logging_chrome.cc and registered
+              unconditionally by InitChromeLogging.
+
+              So there is deliberately no separate Thorium or Chrome entry:
+              the key name under Providers *is* the GUID, which makes a second
+              key for the same provider inexpressible, and meaningless if it
+              were not.
+
+              Electron is the exception, and is not covered. It does not build
+              chrome/ and never calls LogEventProvider::Initialize, so it
+              registers no ETW provider at all and nothing here can surface
+              its logs.
+          -->
+          <?define LogProviderName = 'Chromium'?>
           <?define LogProviderGUID = '{7FE69228-633E-4f06-80C1-527FEA23E3A7}'?>
           <?include chrome_log_provider.wxi?>
 
@@ -326,14 +343,26 @@ limitations under the License.
             Name='Sawbuck.exe'
             DiskId='1'
             Source='$(var.SAWBUCK_EXE_PATH)' />
-        <!-- We set this environment variable system-wide to ensure
-             Chrome uses ETW logging.
-          Note: the user may need to log out and back in before this
-            takes effect.
+        <!--
+          Kept as insurance for running Sawbuck against old Chromium builds,
+          not because anything is known to need it.
+
+          chrome/common/logging_chrome.cc was checked at 8.0.552.237 (2010,
+          contemporaneous with this installer), 14.0.835.202, 23.0.1271.64,
+          37.0.2062.120, the M49 branch point and tip of tree. CHROME_ETW_LOGGING
+          appears in none of them, and every one calls
+          LogEventProvider::Initialize(kChromeTraceProviderName) unconditionally
+          under OS_WIN. So the ETW provider registers regardless and there is
+          nothing for this variable to switch on.
+
+          System='no' deliberately: the original set this machine-wide, which
+          wrote shared state and, per the comment it carried, could need a
+          logout before taking effect. Per-user costs nothing and WiX
+          broadcasts WM_SETTINGCHANGE, so newly launched processes see it.
         -->
         <Environment Id='ChromeEtwLoggingEnvVar'
             Action='create'
-            System='yes'
+            System='no'
             Name='CHROME_ETW_LOGGING'
             Value='1' />
       </Component>

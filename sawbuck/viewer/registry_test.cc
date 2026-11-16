@@ -21,9 +21,9 @@
 namespace testing {
 
 const wchar_t* kHKCUReplacement =
-    L"Software\\Google\\RegistryTest\\HKCU";
+    L"Software\\Alex313031\\RegistryTest\\HKCU";
 const wchar_t* kHKLMReplacement =
-    L"Software\\Google\\RegistryTest\\HKLM";
+    L"Software\\Alex313031\\RegistryTest\\HKLM";
 
 namespace {
 
