@@ -15,3 +15,9 @@ config.h
 pcrecpparg.h
 pcre_stringpiece.h
 pcre_stringpiece.h
+
+pcrecpp.cc: the always-failing assert in NewlineMode's else branch was written
+'assert(NULL == "message")', which MSVC flags as C4130 -- a comparison against
+the address of a string constant. Rewritten as 'assert(false && "message")',
+the usual spelling of the same idiom. The assertion still always fires and
+still prints the message; nothing else changes.
