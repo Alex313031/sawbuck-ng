@@ -19,6 +19,23 @@
   'includes': ['../sawbuck_targets.gypi'],
   'variables': {
     'chromium_code': 1,
+
+    # Which tier of Debugging Tools copy_dlls puts beside the binaries. The
+    # tiers differ by the oldest Windows they run on, which is the only axis
+    # that matters here:
+    #
+    #   xp    6.12.2.633 from WDK 7.1. Links the OS-provided msvcrt.dll, so it
+    #         needs no redistributable and runs from XP up.
+    #   win7  10.0.26100 from the Windows SDK. Links the Universal CRT.
+    #         Resolves essentially all of tip-of-tree Chromium's symbols; only
+    #         a handful of functions need the newer 10.0.28000 build, which is
+    #         not vendored because it does not load on Windows 7.
+    #
+    # Override with -D debugging_tools_tier=win7 to try the other one without
+    # editing this file. Declared at file scope rather than on copy_dlls
+    # because GYP cannot expand a '%' default from the same variables block
+    # that declares it.
+    'debugging_tools_tier%': 'xp',
   },
   'target_defaults': {
     'include_dirs': [
@@ -100,19 +117,49 @@
       ],
     },
     {
-      # Our tests and sawbuck.exe need the dbghelp and symsrv
-      # DLLs in their parent directory, this copies them there.
+      # Our tests and sawbuck.exe need the dbghelp and symsrv DLLs beside
+      # them, and those have to match the architecture being built. The names
+      # are fixed, so an x64 binary cannot be handed the x86 dbghelp.dll.
+      #
+      # 'copies' cannot express that. It is a target-level key, and the msvs
+      # generator emits all four configurations into a single project, so
+      # there is nothing for a condition to branch on. 'msvs_postbuild' *is*
+      # per configuration -- generator/msvs.py reads it out of each
+      # configuration dict -- so the copy lives there instead. Each
+      # xp/<arch> directory holds exactly dbghelp.dll and symsrv.dll, so the
+      # wildcard copies precisely those two and stays correct if the set
+      # changes.
+      #
+      # Ninja ignores msvs_postbuild, so a non-msvs generator does not copy
+      # these at all. That only matters off Windows, where Sawbuck does not
+      # build anyway.
       'target_name': 'copy_dlls',
       'type': 'none',
-      'copies': [
-        {
-          'destination': '<(PRODUCT_DIR)',
-          'files': [
-            '<(DEPTH)/third_party/debugging_tools/files/dbghelp.dll',
-            '<(DEPTH)/third_party/debugging_tools/files/symsrv.dll',
-          ],
+      'variables': {
+        # debugging_tools_tier is declared at file scope above; see the
+        # comment there for what the tiers mean.
+        'debugging_tools_dir':
+            '<(DEPTH)\\third_party\\debugging_tools\\files\\'
+            '<(debugging_tools_tier)',
+      },
+      'configurations': {
+        'Debug': {
+          'msvs_postbuild':
+              'copy /Y "<(debugging_tools_dir)\\x86\\*.dll" "$(OutDir)"',
         },
-      ],
+        'Release': {
+          'msvs_postbuild':
+              'copy /Y "<(debugging_tools_dir)\\x86\\*.dll" "$(OutDir)"',
+        },
+        'Debug_x64': {
+          'msvs_postbuild':
+              'copy /Y "<(debugging_tools_dir)\\x64\\*.dll" "$(OutDir)"',
+        },
+        'Release_x64': {
+          'msvs_postbuild':
+              'copy /Y "<(debugging_tools_dir)\\x64\\*.dll" "$(OutDir)"',
+        },
+      },
     },
     {
       'target_name': 'sawbuck_exe',

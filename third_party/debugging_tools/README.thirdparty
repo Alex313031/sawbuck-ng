@@ -1,13 +1,71 @@
-URL: http://www.microsoft.com/downloads/details.aspx?displaylang=en&FamilyID=36a2630f-5d56-43b5-b996-7633f2ec14ff
-Version: 6.12.2.633
+Name: Debugging Tools for Windows
+Short Name: debugging_tools
+URL: https://learn.microsoft.com/windows-hardware/drivers/debugger/debugger-download-tools
+Version: 6.12.2.633 (default) and 10.0.26100.9457
 License: Redistribution
-License File: files\LICENSE.txt
+License File: files\license.txt
 
 Description:
-Version 6.12.2.633 of the redistributable dbghelp.dll, symsrv.dll, srcsrv.dll
-and pdbstr.exe from Debugging Tools for Windows, as distributed with WDK 7.1.
+The redistributable dbghelp.dll and symsrv.dll from Debugging Tools for
+Windows, plus dbgcore.dll where the release has one.
+
+This is how Sawbuck resolves the call stacks captured at each logging site.
+dbghelp reads the PDBs; symsrv fetches them from a symbol server, which the
+default configuration depends on -- viewer_window.cc builds a symbol path out
+of two SRV* entries, and SRV* is what symsrv implements.
+
+Two tiers, distinguished by the oldest Windows they run on, which is the only
+axis that matters here:
+
+  files\xp\{x86,x64}\     6.12.2.633        Windows XP and up
+  files\win7\{x86,x64}\   10.0.26100.9457   Windows 7 and up
+
+viewer.gyp selects one via the debugging_tools_tier variable (default 'xp',
+override with -D debugging_tools_tier=win7) and its copy_dlls target puts the
+pair matching the configuration being built next to the executable.
+installer\sawbuck.wxs then ships whatever ended up there rather than reaching
+into this directory itself, so the installer follows the architecture and the
+tier automatically. See the comment on copy_dlls for why that selection has to
+happen per configuration and cannot use GYP 'copies'.
+
+Why there are two tiers:
+
+  * 6.12.2.633 came from WDK 7.1 and imports only msvcrt.dll and
+    kernel32.dll, so it needs no redistributable and runs from XP up. That is
+    what makes it the default while XP support is a goal.
+  * 10.0.26100.9457 imports the Universal CRT (api-ms-win-crt-*) plus the
+    Windows 7 era API sets, including api-ms-win-downlevel-kernel32-l2-1-0.dll
+    and api-ms-win-core-localregistry-l1-1-0.dll, which exist on Windows 7 and
+    were removed in Windows 8. It needs the UCRT present, and in exchange it
+    resolves essentially all of tip-of-tree Chromium's symbols.
+  * 10.0.28000.2270 was vendored here briefly and removed: measured
+    2026-11-16, it does not load on Windows 7 at all. It resolves a handful of
+    functions 26100 cannot, which did not justify a third tier.
+
+Note the Windows SDK's Debuggers directory is *not* versioned the way Include
+and Lib are -- there is one Windows Kits\10\Debuggers\{x86,x64} and installing
+a newer SDK overwrites it. Recovering an older build means extracting it from
+that SDK's installer, e.g.
+  winsdksetup.exe /layout C:\sdk26100
+  msiexec /a "C:\sdk26100\Installers\X64 Debuggers And Tools-x64_en-us.msi" \
+      /qb TARGETDIR=C:\dbg26100
+
+dbgcore.dll exists only in the 26100 tier; 6.12 predates the minidump APIs
+being split out of dbghelp. Nothing needs it: dbghelp's MiniDumpWriteDump and
+MiniDumpReadDumpStream exports are forwarders to dbgcore, which the loader
+resolves only for a caller that imports those two functions from dbghelp, and
+neither Sawbuck nor Chromium base does. It is copied along with the tier for
+completeness and is not shipped by the installer.
+
+Not vendored: srcsrv.dll and srcsrv\pdbstr.exe. They were here previously and
+were removed as unused. They implement *source* server, which fetches source
+files out of version control for a source-indexed PDB, and Sawbuck never
+displays source text. Not to be confused with symsrv.dll, the *symbol* server
+client, which is required.
 
 Local Modifications:
-The files above were extracted from the Debugging Tools for Windows program
-directory, after installing them by running the the \Debuggers\setup_x86.exe
-program from the WDK 7.1 SDK.
+Copied from the Debuggers\x86 and Debuggers\x64 directories of a Windows SDK
+installation (10.0.26100.9457) and of WDK 7.1 (6.12.2.633), arranged under
+per-tier then per-architecture directories. The 6.12 32-bit pair is what used
+to sit as a flat set of files directly in files\; it moved to files\xp\x86\
+unchanged. srcsrv.dll and srcsrv\pdbstr.exe were dropped from both tiers.

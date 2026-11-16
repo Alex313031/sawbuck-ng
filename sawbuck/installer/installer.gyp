@@ -68,6 +68,13 @@
             '-out',
             '<@(_outputs)',
             '-dSAWBUCK_EXE_PATH=<(PRODUCT_DIR)\\Sawbuck.exe',
+            # Taken from the build output, not from third_party: these come in
+            # per-architecture flavours and viewer.gyp's copy_dlls has already
+            # placed the pair matching this configuration beside the
+            # executable. Sourcing them from there is what makes the installer
+            # follow the architecture being built.
+            '-dDBGHELP_DLL_PATH=<(PRODUCT_DIR)\\dbghelp.dll',
+            '-dSYMSRV_DLL_PATH=<(PRODUCT_DIR)\\symsrv.dll',
           ],
           'process_outputs_as_sources': 1,
         },
@@ -80,19 +87,21 @@
           # Only Sawbuck.exe used to be listed, which meant editing the
           # licence text or rolling a dependency left a stale installer.
           #
-          # These are spelled with their real on-disk case. sawbuck.wxs asks
-          # for DbgHelp.dll and SymSrv.dll, which Windows resolves anyway, but
-          # a build input that only matches case-insensitively is a trap on
-          # any host that does not.
           'inputs': [
             '<(INTERMEDIATE_DIR)/sawbuck.wixobj',
             '<(PRODUCT_DIR)/Sawbuck.exe',
             # Embedded into the installer UI via the WixUILicenseRtf variable.
             'license.rtf',
-            # The third-party payload, in sawbuck.wxs File element order.
+            # ICU's data comes straight out of third_party; it is
+            # architecture-neutral, so there is one copy to point at.
             '<(DEPTH)/third_party/icu/source/data/in/icudtl.dat',
-            '<(DEPTH)/third_party/debugging_tools/files/dbghelp.dll',
-            '<(DEPTH)/third_party/debugging_tools/files/symsrv.dll',
+            # The debugging tools come from the build output instead, because
+            # they are per-architecture and copy_dlls has already selected the
+            # right pair. The ordering that guarantees they exist by now comes
+            # from the dependency chain, not from this list: sawbuck_msi
+            # depends on sawbuck_exe, which depends on copy_dlls.
+            '<(PRODUCT_DIR)/dbghelp.dll',
+            '<(PRODUCT_DIR)/symsrv.dll',
           ],
           'outputs': [
             '<(PRODUCT_DIR)/sawbuck.msi',

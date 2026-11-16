@@ -366,19 +366,36 @@ limitations under the License.
             Source='..\..\third_party\icu\source\data\in\icudtl.dat' />
       </Component>
 
+      <!--
+        DbgHelp.dll and SymSrv.dll are taken from the build output rather than
+        straight out of third_party, the same way Sawbuck.exe is. They exist
+        in per-architecture flavours, and viewer.gyp's copy_dlls has already
+        put the ones matching the build beside the executable, so sourcing
+        them from there makes the installer follow the architecture
+        automatically instead of needing its own idea of which set to pick.
+        installer.gyp passes the two paths in as candle defines.
+
+        No DbgCore.dll. The 6.12.2.633 set shipped by default predates the
+        minidump APIs being split out of DbgHelp, so there is no such file,
+        and the 10.0.26100 set does not need one shipped either: DbgHelp's
+        MiniDumpWriteDump and MiniDumpReadDumpStream exports are forwarders to
+        DbgCore, which the loader resolves only for a caller that imports
+        those two functions from DbgHelp. Nothing in Sawbuck or Chromium base
+        does, so the forwarders are never followed.
+      -->
       <Component Id='DbgHelpDllComponent'
           Guid='{CDDFC08A-5814-4375-9971-2B35A039B72F}'>
         <File Id='DbgHelpDllFile'
             Name='DbgHelp.dll'
             DiskId='1'
-            Source='..\..\third_party\debugging_tools\files\DbgHelp.dll' />
+            Source='$(var.DBGHELP_DLL_PATH)' />
       </Component>
       <Component Id='SymSrvDllComponent'
           Guid='{04FFB025-E3C9-4ecd-8255-ED7E63EFC948}'>
         <File Id='SymSrvDllFile'
             Name='SymSrv.dll'
             DiskId='1'
-            Source='..\..\third_party\debugging_tools\files\SymSrv.dll' />
+            Source='$(var.SYMSRV_DLL_PATH)' />
       </Component>
     </DirectoryRef>
 
