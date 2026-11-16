@@ -36,11 +36,43 @@ bool ProviderConfiguration::ReadProviders() {
   // unless the process is elevated. Sawbuck.exe always is -- its manifest sets
   // requireAdministrator -- so this only ever surfaced in the unit tests,
   // which are not elevated, as "Error opening provider key <guid>, 5".
-  LONG err = providers.Open(HKEY_LOCAL_MACHINE,
-                            config::kProviderNamesKey,
-                            KEY_READ);
+  //
+  // Both registry views are tried, because WOW64 redirects HKLM\Software and
+  // the registrations can land in either one. The installer is a 32-bit MSI,
+  // so on 64-bit Windows its writes are redirected into
+  // HKLM\Software\WOW6432Node; a 32-bit Sawbuck reading this path is
+  // redirected the same way and finds them, while a 64-bit Sawbuck is not and
+  // sees nothing -- which presented as an empty Configure Providers dialog and
+  // no capture at all in x64 builds. Someone registering a provider by hand
+  // with a 64-bit tool, or a future 64-bit installer, puts them in the native
+  // view instead, so neither view can be assumed.
+  //
+  // The view flags are stated rather than left implicit so the lookup does not
+  // depend on this process's own bitness. Both are valid from either, and are
+  // ignored on 32-bit Windows, where there is no redirection to begin with.
+  // Note this affects HKLM only: plain HKCU\Software is not redirected, so the
+  // per-provider levels ReadSettings and WriteSettings deal with are shared
+  // between the two builds already.
+  //
+  // The third, unqualified attempt is for the unit tests. They point HKLM at a
+  // subkey of HKCU with RegOverridePredefKey, and it is not obvious that the
+  // view flags stay harmless against an override handle. Falling back to a
+  // plain open costs nothing -- in a real process it resolves to the same view
+  // as one of the two above -- and keeps the fixture working whatever the
+  // answer turns out to be.
+  const REGSAM kViews[] = {
+    KEY_READ | KEY_WOW64_64KEY,
+    KEY_READ | KEY_WOW64_32KEY,
+    KEY_READ,
+  };
+  LONG err = ERROR_FILE_NOT_FOUND;
+  for (size_t i = 0; i < arraysize(kViews) && err != ERROR_SUCCESS; ++i) {
+    err = providers.Open(HKEY_LOCAL_MACHINE, config::kProviderNamesKey,
+                         kViews[i]);
+  }
   if (err != ERROR_SUCCESS) {
-    LOG(ERROR) << "Failed to open provider names key";
+    LOG(ERROR) << "Failed to open provider names key in any registry view, "
+               << "last error " << err;
     return false;
   }
 
