@@ -298,17 +298,19 @@ struct ProcessInfo64V3 {
 // at all -- it logged "Unexpected process info version 4" for every process
 // event and discarded the information.
 //
-// NOT yet verified against a real version 4 log, unlike every layout above.
 // Microsoft's MOF for Process_V4_TypeGroup1 adds a Flags field after
-// DirectoryTableBase, which is what these add; but the V2/V3 layouts here
-// already carry Unknown fields the MOF does not describe, so the documentation
-// is not a reliable guide on its own.
+// DirectoryTableBase, which is what these add. The documentation alone was not
+// enough to go on, though: the V2/V3 layouts above already carry Unknown
+// fields the MOF does not describe, so these were written to be *tested*
+// rather than trusted. Parsing tries both the version 4 and version 3 layouts
+// -- see the version 4 case in kernel_log_consumer.cc -- which is safe because
+// ParseProcessEvent validates the SID it lands on with IsValidSid, so a wrong
+// prefix size fails instead of silently misparsing. The consumer reports which
+// layout matched, once per log, so real data settles it.
 //
-// Parsing therefore tries both this and the V3 layout -- see the version 4
-// case in kernel_log_consumer.cc. That is safe because ParseProcessEvent
-// validates the SID it lands on with IsValidSid, so a wrong prefix size fails
-// instead of silently misparsing. The consumer reports which layout matched,
-// once per log, so the right one can be confirmed from real data.
+// 32-bit is still open: no 32-bit version 4 log has been read yet, so if the
+// Flags field is wrong here, the V3 fallback is what will be carrying 32-bit
+// logs. Watch for the consumer's one-shot INFO line to say so.
 struct ProcessInfo32V4 {
   ULONG UniqueProcessKey;  // ItemPtr
   ULONG ProcessId;  // ItemULong
@@ -324,6 +326,10 @@ struct ProcessInfo32V4 {
   // ImageFileName, ItemWString
 };
 
+// Verified from a real 64-bit version 4 log, 2026-11-15: the consumer reported
+// "Process info version 4 (64-bit log) parses with the version 4 layout (with
+// Flags)", so the Flags field below is in the right place and the MOF is right
+// about it. This layout is as solid as the Win7-verified ones above.
 struct ProcessInfo64V4 {
   ULONGLONG UniqueProcessKey;  // ItemPtr
   ULONG ProcessId;  // ItemULong

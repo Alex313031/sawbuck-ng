@@ -213,12 +213,17 @@ bool ParseProcessEvent(const void* data, size_t data_len,
 
 // Parses a version 4 process event, which Windows 8 and later emit.
 //
-// The version 4 prefix layout has not been confirmed against a real log -- see
-// the note on ProcessInfo32V4 in kernel_log_types.h -- so both candidates are
-// tried. This is safe rather than reckless: ParseProcessEvent validates the
-// SID it lands on, so a wrong prefix size makes it return false instead of
-// misparsing. Whichever layout matches is reported once per log, so the
-// correct one can be established from real data.
+// Both candidates are tried because the version 4 prefix layout was derived
+// from Microsoft's MOF rather than from a hex dump -- see the note on
+// ProcessInfo32V4 in kernel_log_types.h. This is safe rather than reckless:
+// ParseProcessEvent validates the SID it lands on, so a wrong prefix size
+// makes it return false instead of misparsing. Whichever layout matches is
+// reported once per log, which is how real data settles the question.
+//
+// 64-bit is settled: a real log confirmed the version 4 layout on 2026-11-15.
+// 32-bit has not been seen yet, so the fallback stays. The `reported` flag
+// below is per template instantiation, so 32- and 64-bit logs each get their
+// own one-shot line.
 template <class V4Type, class V3Type>
 bool ParseProcessEventV4(const void* data, size_t data_len,
                          KernelProcessEvents::ProcessInfo* process_info,
