@@ -136,7 +136,13 @@
       'msvs_settings': {
         'VCLinkerTool': {
           'SubSystem': 2,
-          # 2 is requireAdministrator UAC level.
+          # 2 is requireAdministrator UAC level. sawbuck.exe.manifest, merged
+          # in by VCManifestTool below, declares the same level, and the two
+          # snippets have to keep agreeing: mt.exe fails the build with
+          # "manifest authoring error c1010001" if they ever differ. Removing
+          # this line is not the way to drop the duplication -- EnableUAC
+          # defaults to true, so the level would fall back to asInvoker and
+          # disagree. 'EnableUAC': 'false' is what suppresses it.
           'UACExecutionLevel': 2,
           # This corresponds to /PROFILE, which ensures that the
           # PDB file contains a FIXUP stream.
