@@ -182,7 +182,7 @@ bool LogViewFormatter::FormatColumn(ILogView* log_view,
 LogListView::LogListView(CUpdateUIBase* update_ui)
     : log_view_(NULL), event_cookie_(0),
       update_ui_(update_ui), stack_trace_view_(NULL),
-      process_info_service_(NULL) {
+      process_info_service_(NULL), context_menu_row_(kNoItem) {
   ui_loop_ = base::MessageLoop::current();
 
   context_menu_bar_.LoadMenu(IDR_LIST_VIEW_CONTEXT_MENU);
@@ -395,44 +395,44 @@ int LogListView::GetImageIndexForSeverity(int severity) {
   return -1;
 }
 
-void LogListView::OnCopyCommand(UINT code, int id, CWindow window) {
-  std::wstringstream selection;
+void LogListView::AppendRowText(int row, std::wstring* text) {
+  DCHECK(text != NULL);
 
-  int item = GetNextItem(kNoItem, LVNI_SELECTED);
-  for (; item != kNoItem; item = GetNextItem(item, LVNI_SELECTED)) {
-    NMLVDISPINFO info = {};
+  NMLVDISPINFO info = {};
 
-    info.hdr.hwndFrom = m_hWnd;
-    info.item.iItem = item;
-    info.item.mask = LVIF_TEXT;
+  info.hdr.hwndFrom = m_hWnd;
+  info.item.iItem = row;
+  info.item.mask = LVIF_TEXT;
 
-    for (int col = COL_SEVERITY; col < COL_MAX; ++col) {
-      info.item.iSubItem = col;
+  for (int col = COL_SEVERITY; col < COL_MAX; ++col) {
+    info.item.iSubItem = col;
 
-      OnGetDispInfo(&info.hdr);
+    OnGetDispInfo(&info.hdr);
 
-      // Tab separate the columns.
-      if (col != COL_SEVERITY)
-        selection << L'\t';
-      selection << info.item.pszText;
-    }
-
-    // Clipboard has CRLF separated lines.
-    selection << L"\r\n";
+    // Tab separate the columns.
+    if (col != COL_SEVERITY)
+      text->push_back(L'\t');
+    // OnGetDispInfo points pszText at item_text_, one buffer it reuses for
+    // every call, so the text has to be taken before the next column
+    // overwrites it. Appending here does that.
+    text->append(info.item.pszText);
   }
 
-  // Copy the sstring to a global pointer for the clipboard.
+  // Clipboard has CRLF separated lines.
+  text->append(L"\r\n");
+}
+
+void LogListView::CopyTextToClipboard(const std::wstring& text) {
+  // Copy the string to a global pointer for the clipboard.
   CHeapPtr<wchar_t, CGlobalAllocator> data;
 
-  if (!data.Allocate(selection.str().length() + 1)) {
+  if (!data.Allocate(text.length() + 1)) {
     LOG(ERROR) << "Unable to allocate clipboard data";
     return;
   }
 
   // Copy the string and the terminating zero.
-  memcpy(data.m_pData,
-         &selection.str()[0],
-         (selection.str().length() + 1) * sizeof(wchar_t));
+  memcpy(data.m_pData, text.c_str(), (text.length() + 1) * sizeof(wchar_t));
 
   if (::OpenClipboard(m_hWnd)) {
     ::EmptyClipboard();
@@ -449,6 +449,31 @@ void LogListView::OnCopyCommand(UINT code, int id, CWindow window) {
   } else  {
     LOG(ERROR) << "Unable to open clipboard, error " << ::GetLastError();
   }
+}
+
+void LogListView::OnCopyCommand(UINT code, int id, CWindow window) {
+  std::wstring selection;
+
+  int item = GetNextItem(kNoItem, LVNI_SELECTED);
+  for (; item != kNoItem; item = GetNextItem(item, LVNI_SELECTED))
+    AppendRowText(item, &selection);
+
+  CopyTextToClipboard(selection);
+}
+
+void LogListView::OnCopyRow(UINT code, int id, CWindow window) {
+  // Deliberately the row the context menu was opened over, not the selection
+  // and not the focused row. Right-clicking a list view does not move either
+  // one, so acting on them would copy whatever the last left-click had
+  // touched -- which is not the row the user just pointed at.
+  if (context_menu_row_ == kNoItem) {
+    NOTREACHED() << "Copy Row with no row under the context menu";
+    return;
+  }
+
+  std::wstring text;
+  AppendRowText(context_menu_row_, &text);
+  CopyTextToClipboard(text);
 }
 
 void LogListView::OnSelectAll(UINT code, int id, CWindow window) {
@@ -509,6 +534,24 @@ void LogListView::OnContextMenu(CWindow wnd, CPoint point) {
     LOG(ERROR) << "Unable to create popup menu";
     return;
   }
+
+  // Remember which row the menu was opened over, so OnCopyRow can act on it.
+  // The commands arrive later as WM_COMMAND and carry only an id, and a
+  // right-click moves neither the selection nor the focus, so the row cannot
+  // be recovered once we return from here.
+  context_menu_row_ = row;
+
+  menu.AppendMenu(row == kNoItem ? MF_GRAYED : MF_ENABLED,
+                  ID_COPY_ROW,
+                  L"&Copy Row");
+
+  // Relying on the default arguments, rather than passing an explicit id and
+  // NULL text. CMenuT::AppendMenu is overloaded on both the second and third
+  // parameters, and a zero-valued integer literal is also a null pointer
+  // constant, so spelling the id out as 0 makes the UINT_PTR and HMENU
+  // overloads equally good matches and the call ambiguous. Only the
+  // three-defaulted overload can be called with one argument.
+  menu.AppendMenu(MF_SEPARATOR);
 
   menu.AppendMenu(row == -1 ? MF_GRAYED : MF_ENABLED,
                   ID_SET_TIME_ZERO,
@@ -598,15 +641,27 @@ void LogListView::FindNext() {
 }
 
 void LogListView::OnSetBaseTime(UINT code, int id, CWindow window) {
-  // Get the focused item.
-  int row = GetNextItem(-1, LVIS_FOCUSED);
-  if (row == -1) {
-    NOTREACHED() << "No focused element";
+  // The row the context menu was opened over, which is the only way to reach
+  // this command. It used to read GetNextItem(-1, LVIS_FOCUSED) instead, and
+  // that is a different row: a right-click moves neither the selection nor
+  // the focus, so invoking this from the context menu set the base time from
+  // whichever row had last been left-clicked, not the one pointed at.
+  //
+  // It also used to reach the NOTREACHED below whenever nothing had ever been
+  // focused, even though the menu item was enabled -- OnContextMenu decides
+  // that from its hit test, which succeeds on a row the focus has never
+  // visited. Both now consult the same row, so enabled and usable agree.
+  //
+  // Shift+F10 is unaffected: that path has no cursor to hit test, so
+  // OnContextMenu resolves the row from LVIS_FOCUSED exactly as before and
+  // stores that.
+  if (context_menu_row_ == kNoItem) {
+    NOTREACHED() << "Set Base Time with no row under the context menu";
     return;
   }
 
   // Get the corresponding time.
-  formatter_.set_base_time(log_view_->GetTime(row));
+  formatter_.set_base_time(log_view_->GetTime(context_menu_row_));
 
   // Refresh the list.
   RedrawItems(0, GetItemCount());

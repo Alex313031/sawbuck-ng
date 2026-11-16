@@ -92,6 +92,8 @@ IDR_LIST_VIEW_CONTEXT_MENU MENU
 BEGIN
     POPUP "Context"
     BEGIN
+        MENUITEM "&Copy Row",                   ID_COPY_ROW
+        MENUITEM SEPARATOR
         MENUITEM "&Set Base Time",              ID_SET_TIME_ZERO
         MENUITEM "&Reset Base Time",            ID_RESET_BASE_TIME
     END
@@ -252,6 +254,7 @@ END
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
-/////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
 

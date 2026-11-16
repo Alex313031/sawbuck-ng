@@ -72,13 +72,16 @@
 #define ID_EDIT_AUTOSIZE_COLUMNS        4011
 #define ID_INCLUDE_COLUMN               4012
 #define ID_EXCLUDE_COLUMN               4013
+// List view context menu: copy the single row the menu was opened over,
+// as distinct from ID_EDIT_COPY which copies the whole selection.
+#define ID_COPY_ROW                     4014
 
 // Next default values for new objects
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        109
-#define _APS_NEXT_COMMAND_VALUE         4014
+#define _APS_NEXT_COMMAND_VALUE         4015
 #define _APS_NEXT_CONTROL_VALUE         1023
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

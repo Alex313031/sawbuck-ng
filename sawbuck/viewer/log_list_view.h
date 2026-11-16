@@ -119,6 +119,7 @@ class LogListView
     MSG_WM_KILLFOCUS(OnKillFocus)
     COMMAND_ID_HANDLER_EX(ID_EDIT_AUTOSIZE_COLUMNS, OnAutoSizeColumns)
     COMMAND_ID_HANDLER_EX(ID_EDIT_COPY, OnCopyCommand)
+    COMMAND_ID_HANDLER_EX(ID_COPY_ROW, OnCopyRow)
     COMMAND_ID_HANDLER_EX(ID_EDIT_CLEAR_ALL, OnClearAll)
     COMMAND_ID_HANDLER_EX(ID_EDIT_SELECT_ALL, OnSelectAll)
     COMMAND_ID_HANDLER_EX(ID_EDIT_FIND, OnFind)
@@ -176,6 +177,13 @@ class LogListView
   LRESULT OnGetInfoTip(LPNMHDR notification);
 
   void OnCopyCommand(UINT code, int id, CWindow window);
+  void OnCopyRow(UINT code, int id, CWindow window);
+
+  // Appends one row to |text| as tab separated columns followed by CRLF, in
+  // the form the clipboard gets. Shared by the two copy commands.
+  void AppendRowText(int row, std::wstring* text);
+  // Puts |text| on the clipboard as CF_UNICODETEXT.
+  void CopyTextToClipboard(const std::wstring& text);
   virtual void OnClearAll(UINT code, int id, CWindow window);
   void OnSelectAll(UINT code, int id, CWindow window);
   void OnSetFocus(CWindow window);
@@ -234,6 +242,12 @@ class LogListView
   // Our context menu.
   CMenu context_menu_bar_;
   CMenu context_menu_;
+
+  // The row the context menu was last opened over, or kNoItem if it was
+  // opened over empty space. OnCopyRow needs it because a WM_COMMAND
+  // carries only an id, and a right-click moves neither the selection nor
+  // the focus, so there is nothing to recover it from afterwards.
+  int context_menu_row_;
 
   // Used to format the text we display.
   LogViewFormatter formatter_;
