@@ -143,10 +143,18 @@ limitations under the License.
             Type='integer'
             Value='1'
             KeyPath='yes' />
-        <!-- Put an uninstall shortcut in there as well. -->
+        <!--
+          Put an uninstall shortcut in there as well.
+
+          SystemFolder, not System64Folder: this is a 32-bit package, and
+          System64Folder is only defined on 64-bit Windows, so on a 32-bit
+          install the shortcut pointed at nothing. SystemFolder resolves to
+          SysWOW64 on x64 and System32 on x86, and msiexec.exe in either is
+          the right one to hand a ProductCode to.
+        -->
         <Shortcut Id='UninstallSawbuckShortcut'
                   Name='Uninstall Sawbuck'
-                  Target='[System64Folder]msiexec.exe'
+                  Target='[SystemFolder]msiexec.exe'
                   Arguments='/x [ProductCode]'
                   Description='Uninstalls Sawbuck' />
       </Component>
