@@ -156,13 +156,14 @@ DEPS = [
     #  'src/third_party/tcmalloc@271365'),
 
     # --- Standalone checkouts, each pinned separately. ---
-    # DEPS.sawbuck pinned icu46 at chrome_revision (r271365); the newest icu46
-    # commit at or before that is r262949 -- the very commit Chromium itself
-    # pinned at r271365, so the two agree exactly. This is the one dependency
-    # still at M37; see DEPS for why it is being left for last.
-    ('third_party/icu', 'chromium/deps/icu46',
-     'c25f7de14670091b1b7dfeb7af4d04050cbbb1d8', None,
-     'deps/third_party/icu46@271365 -> r262949'),
+    # ICU moves repository as well as version: chromium/deps/icu46 held ICU 4.6
+    # and was retired, chromium/deps/icu holds the line Chromium moved to, and
+    # this pin is Chromium 49's own (ICU 54.1). The M37 pin it replaces was
+    # chromium/deps/icu46 @ c25f7de1 (svn r262949, the newest icu46 commit at
+    # or before r271365 and the exact commit Chromium pinned there).
+    ('third_party/icu', 'chromium/deps/icu',
+     '8d342a405be5ae8aacb1e16f0bc31c3a4fbf26a2', None,
+     'Chromium 49 DEPS, ICU 54.1'),
     # gtest and gmock are Chromium 49's own pins, read out of
     # chromium/src@92d77538:DEPS rather than resolved from SVN footers.
     #

@@ -119,10 +119,23 @@ vars = {
   # file rather than subdirectories of chromium/src, so they port over
   # directly.
   #
-  # icu46 was pinned at chrome_revision (r271365), and the newest icu46 commit
-  # at or before that is r262949 -- the very commit Chromium itself pinned at
-  # r271365, so the two agree exactly.
-  'icu_revision': 'c25f7de14670091b1b7dfeb7af4d04050cbbb1d8',    # svn r262949
+  # ICU is Chromium 49's own pin, read out of chromium/src@92d77538:DEPS. This
+  # is a repository change as well as a version bump: chromium/deps/icu46 held
+  # ICU 4.6 and was retired, chromium/deps/icu holds the line Chromium moved
+  # to, and the pin below is ICU 54.1 (2015-12-14).
+  #
+  # Nothing moves on disk. The new repository keeps windows/icudt.dll at the
+  # same path, so sawbuck.wxs needs no change, and icu.gyp still exports the
+  # same three targets Sawbuck and base depend on -- icudata, icui18n, icuuc.
+  # Both versions also declare 'icu_use_data_file_flag%': 0 in their own
+  # variables block, so the Windows data mechanism is unchanged: icudata stays
+  # a copy of windows/icudt.dll rather than becoming a copy of icudtl.dat.
+  #
+  # The M37 pin this replaces: chromium/deps/icu46 @
+  # c25f7de14670091b1b7dfeb7af4d04050cbbb1d8 (svn r262949, which was the newest
+  # icu46 commit at or before r271365 and the very commit Chromium pinned
+  # there, so the two agreed exactly).
+  'icu_revision': '8d342a405be5ae8aacb1e16f0bc31c3a4fbf26a2',    # ICU 54.1, M49
   # gtest and gmock are the pins from Chromium 49's own DEPS, read out of
   # chromium/src@92d77538:DEPS. Both are 2015-07-28, fourteen minutes apart.
   #
@@ -160,10 +173,14 @@ deps = {
 
   'third_party/zlib':
     '{chromium_git}/chromium/src/third_party/zlib.git@{zlib_revision}',
-  # ICU 4.6. Required by base_i18n and the icudata target; the viewer calls
-  # base::i18n::InitializeICU() and formats timestamps through it.
+  # ICU 54.1. Required by base_i18n and the icudata target; the viewer calls
+  # base::i18n::InitializeICU() and formats timestamps through it. Not
+  # deps/icu46: that repository held ICU 4.6 and Chromium had left it by M49.
+  # Changing a dep's URL is something gclient does not always resolve on its
+  # own -- if a sync complains about this path, delete third_party/icu and
+  # sync again.
   'third_party/icu':
-    '{chromium_git}/chromium/deps/icu46.git@{icu_revision}',
+    '{chromium_git}/chromium/deps/icu.git@{icu_revision}',
   'third_party/modp_b64':
     '{chromium_git}/chromium/src/third_party/modp_b64.git@{modp_b64_revision}',
   # Not fetched. The only thing that refers to it is
