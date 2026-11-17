@@ -208,8 +208,36 @@
         # in sawbuck/sawbuck.gypi for what it costs to leave on.
         ['sawbuck_use_winwrap!=0', {
           'dependencies': [
-            '<(DEPTH)/third_party/winwrap.gyp:winwrap',
+            '<(DEPTH)/third_party/winwrap/winwrap.gyp:winwrap',
           ],
+          'msvs_settings': {
+            'VCLinkerTool': {
+              'AdditionalOptions': [
+                # Not optional, and not a belt-and-braces measure.
+                #
+                # winwrap captures a call by defining the __imp_<name> slot the
+                # call site loads through, which only works if winwrap is
+                # searched before the import library it stands in front of.
+                # Its own notes say that holds without reordering, because
+                # kernel32.lib arrives through the /DEFAULTLIB directives the
+                # SDK headers embed and those come after libraries named on the
+                # command line. True of Chromium's GN build; false here --
+                # common.gypi names kernel32.lib and a dozen more explicitly in
+                # AdditionalDependencies, so they are on the command line too
+                # and order decides.
+                #
+                # Measured, not theorised: with winwrap linked but searched
+                # after kernel32.lib, dumpbin showed every function it covers
+                # still bound to KERNEL32.dll in the finished binary -- the four
+                # Fls*, AcquireSRWLockExclusive, ReleaseSRWLockExclusive,
+                # WakeAllConditionVariable, SleepConditionVariableSRW and
+                # InitializeCriticalSectionEx. /WHOLEARCHIVE pulls every
+                # winwrap object in up front, so the slots are defined before
+                # kernel32 is ever consulted.
+                '/WHOLEARCHIVE:winwrap.lib',
+              ],
+            },
+          },
           # The subsystem version, which is the other half of the recipe:
           # winwrap supplies the imports XP does not export, and this is what
           # lets the loader accept the binary in the first place.

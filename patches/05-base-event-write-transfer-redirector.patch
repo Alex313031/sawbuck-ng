@@ -1,0 +1,102 @@
+Add an EventWriteTransfer redirector, so a Chromium base built with a current
+Windows SDK still loads on Windows XP.
+
+base/trace_event/trace_event_etw_export_win.cc already carries an XP shim for
+the manifest-based ETW provider API: it defines functions called EventRegister,
+EventWrite and EventUnregister, resolves the real ones out of advapi32 with
+GetProcAddress, and returns 0 when they are absent. Its own comment says so --
+"Try to find the ETW functions. This will fail on XP." M49 was the last
+Chromium to support XP and this is how it did it.
+
+The calls being intercepted come from chrome_events_win.h, which mc.exe
+generates from chrome_events_win.man at build time. That is where this breaks:
+the mc.exe of 2016 generated calls to EventWrite, and the one in the current
+Windows SDK generates EventWriteTransfer instead. Nothing intercepts that, so
+it is left as a static advapi32 import -- and a statically imported symbol the
+OS does not export is fatal at load, before any process code runs. The result
+is that Sawbuck.exe dies on XP with
+
+  The procedure entry point EventWriteTransfer could not be located in the
+  dynamic link library ADVAPI32.dll
+
+even though every other piece of XP support is in place. Nothing in Chromium's
+source mentions EventWriteTransfer; the import is entirely a product of the
+newer message compiler.
+
+So this adds the fourth redirector, in the shape of the three already there: a
+typedef, a resolved pointer, the GetProcAddress beside its siblings, and a
+function that forwards when the real one exists and returns 0 when it does not.
+Returning 0 drops the event, which is the only outcome available on a system
+with no manifest-based ETW to write into, and matches what the other three do.
+
+Note on winwrap. winwrap also supplies EventWriteTransfer, and does so on
+different terms -- it returns ERROR_INVALID_HANDLE, because on XP the REGHANDLE
+genuinely is invalid and winwrap's rule is that a function which cannot do its
+job fails rather than returning a plausible value. Both are correct for where
+they live: this patch follows the convention of the file it is in. They do not
+conflict either, since base's call sites bind to the local definition -- which
+is demonstrable, as EventRegister, EventWrite and EventUnregister appear
+nowhere in the finished binary's import table while EventWriteTransfer did.
+This patch is what makes a build without winwrap load; winwrap is what covers
+any other consumer of the same API.
+
+--- a/base/trace_event/trace_event_etw_export_win.cc
++++ b/base/trace_event/trace_event_etw_export_win.cc
+@@ -40,10 +40,21 @@
+                                       ULONG UserDataCount,
+                                       PEVENT_DATA_DESCRIPTOR UserData);
+ typedef ULONG(__stdcall* tEventUnregister)(REGHANDLE RegHandle);
++// Not in the original. The current Windows SDK's mc.exe generates calls to
++// EventWriteTransfer where the one this file was written against generated
++// EventWrite, so the three redirectors below no longer cover everything
++// chrome_events_win.h emits.
++typedef ULONG(__stdcall* tEventWriteTransfer)(REGHANDLE RegHandle,
++                                              PCEVENT_DESCRIPTOR EventDescriptor,
++                                              LPCGUID ActivityId,
++                                              LPCGUID RelatedActivityId,
++                                              ULONG UserDataCount,
++                                              PEVENT_DATA_DESCRIPTOR UserData);
+ 
+ tEventRegister EventRegisterProc = nullptr;
+ tEventWrite EventWriteProc = nullptr;
+ tEventUnregister EventUnregisterProc = nullptr;
++tEventWriteTransfer EventWriteTransferProc = nullptr;
+ 
+ // |kFilteredEventGroupNames| contains the event categories that can be
+ // exported individually. These categories can be enabled by passing the correct
+@@ -130,6 +141,26 @@
+   return 0;
+ }
+ 
++// Redirector function for EventWriteTransfer. Called by macros in
++// chrome_events_win.h.
++//
++// Without this the call falls through to a static advapi32 import, and the
++// process fails to load on XP before any of its own code runs -- which is the
++// one thing the three redirectors above exist to prevent. Returns 0 when the
++// function is absent, matching its siblings: the event is dropped, which is
++// all that can happen on a system with no manifest-based ETW to write into.
++ULONG EVNTAPI EventWriteTransfer(REGHANDLE RegHandle,
++                                 PCEVENT_DESCRIPTOR EventDescriptor,
++                                 LPCGUID ActivityId,
++                                 LPCGUID RelatedActivityId,
++                                 ULONG UserDataCount,
++                                 PEVENT_DATA_DESCRIPTOR UserData) {
++  if (EventWriteTransferProc)
++    return EventWriteTransferProc(RegHandle, EventDescriptor, ActivityId,
++                                  RelatedActivityId, UserDataCount, UserData);
++  return 0;
++}
++
+ namespace base {
+ namespace trace_event {
+ 
+@@ -169,6 +200,8 @@
+         ::GetProcAddress(AdvapiDLL, "EventWrite"));
+     EventUnregisterProc = reinterpret_cast<tEventUnregister>(
+         ::GetProcAddress(AdvapiDLL, "EventUnregister"));
++    EventWriteTransferProc = reinterpret_cast<tEventWriteTransfer>(
++        ::GetProcAddress(AdvapiDLL, "EventWriteTransfer"));
+ 
+     // Register the ETW provider. If registration fails then the event logging
+     // calls will fail (on XP this call will do nothing).
