@@ -203,6 +203,55 @@
           'AdditionalManifestFiles': ['$(ProjectDir)\\sawbuck.exe.manifest'],
         },
       },
+      'conditions': [
+        # Windows XP support, off unless asked for -- see sawbuck_use_winwrap
+        # in sawbuck/sawbuck.gypi for what it costs to leave on.
+        ['sawbuck_use_winwrap!=0', {
+          'dependencies': [
+            '<(DEPTH)/third_party/winwrap.gyp:winwrap',
+          ],
+          # The subsystem version, which is the other half of the recipe:
+          # winwrap supplies the imports XP does not export, and this is what
+          # lets the loader accept the binary in the first place.
+          #
+          # Split per architecture because the floor is not the same. 5.01 is
+          # Windows XP on x86, but 64-bit Windows begins at 5.02 and the
+          # linker will not accept anything lower for that machine.
+          #
+          # It has to go through these abstract configurations rather than a
+          # GYP condition on target_arch, for exactly the reason sawbuck.gypi
+          # gives for setting OutputDirectory the same way: one generated
+          # project holds all four configurations, so nothing GYP substitutes
+          # at generation time can differ between them. Every concrete
+          # configuration inherits ['Common_Base', '<arch>_Base',
+          # '<Debug|Release>_Base'], so this reaches both of that arch.
+          #
+          # 'abstract' is restated only to be explicit. These are already
+          # declared abstract in sawbuck.gypi's target_defaults, and that
+          # survives the merge into this target.
+          'configurations': {
+            'x86_Base': {
+              'abstract': 1,
+              'msvs_settings': {
+                'VCLinkerTool': {
+                  # /SUBSYSTEM:WINDOWS,5.01 -- SubSystem 2 is set above.
+                  'MinimumRequiredVersion': '5.01',
+                },
+              },
+            },
+            'x64_Base': {
+              'abstract': 1,
+              'msvs_settings': {
+                'VCLinkerTool': {
+                  # /SUBSYSTEM:WINDOWS,5.02. XP x64 and Server 2003, which is
+                  # as low as the linker goes for this machine.
+                  'MinimumRequiredVersion': '5.02',
+                },
+              },
+            },
+          },
+        }],
+      ],
     },
     {
       'target_name': 'viewer_unittests',

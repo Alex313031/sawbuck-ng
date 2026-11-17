@@ -45,6 +45,24 @@
     # died on a warning in uresbund.c while first-party code built fine.
     'win_third_party_warn_as_error%': 'false',
 
+    # Link winwrap and target Windows XP.
+    #
+    # Off by default, which is deliberate and is also how upstream declares
+    # use_winwrap in winwrap.gni: the redirects capture every call in the
+    # binary, so a build that will only ever run on a current Windows would
+    # get winwrap's own emulation -- a CRITICAL_SECTION in place of a real
+    # SRWLOCK, and so on -- for no benefit. Turn it on for a build that
+    # actually has to run on XP:
+    #
+    #   python3 tools/gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
+    #
+    # The same switch sets the linker's subsystem version, because the two
+    # have to agree in both directions. Without winwrap, a binary claiming
+    # 5.01 still dies on XP at load time on the first import the OS does not
+    # export, before any of its own code runs; with winwrap but without 5.01,
+    # the loader rejects it for the subsystem version instead.
+    'sawbuck_use_winwrap%': 0,
+
     # NOTE: clang/host_clang are NOT set here. They have to be command-line
     # defines -- see tools/gyp_sawbuck.py -- because a '%' default declared
     # here loses to common.gypi's own nested declaration in any .gyp that
