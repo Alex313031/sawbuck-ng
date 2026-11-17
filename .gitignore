@@ -86,6 +86,7 @@
 /third_party/sqlite/
 /third_party/tcmalloc
 /third_party/vsssdk72/
+/third_party/winwrap/
 /third_party/zlib/
 # tools/ holds our own scripts alongside the synced tools/{win,code_coverage,
 # gyp,gyp-next}, so ignore everything in it except what we maintain.

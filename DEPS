@@ -22,7 +22,7 @@
 # Chromium left SVN in August 2014 (src.chromium.org/svn is gone) and Google
 # Code shut down in 2016.
 #
-# Three things about the port are worth knowing.
+# Four things about the port are worth knowing.
 #
 # 1. There is no single 'chrome_revision' any more. The old file checked out ten
 #    *subdirectories* of the Chromium SVN tree at one revision. Git cannot check
@@ -52,6 +52,16 @@
 #    target in it to resolve, so generation fails without this. The roll commit
 #    above added '/third_party/libxml/' to .gitignore and no matching DEPS
 #    entry, which is presumably why nobody noticed.
+#
+# 4. third_party/winwrap tracks a branch rather than a commit, which is the
+#    one exception to everything said above about exact pinning. It is our own
+#    repository, not a third-party pin; it is under active development for the
+#    XP work; and there is no known-good revision to reproduce against yet.
+#
+#    The cost is real: a sync is no longer reproducible, so two checkouts of
+#    the same sawbuck-ng commit can end up with different winwrap. Swap 'main'
+#    for a SHA once XP support works, and this file goes back to being fully
+#    pinned.
 #
 # use_relative_paths makes every path below relative to *this file*, so the
 # repository root is the source root and GYP's depth is '.'. The old file
@@ -156,6 +166,13 @@ vars = {
   'gmock_revision': '0421b6f358139f02e102c9c332ce19a33faf75be',   # 2015-07-28, M49
   'gyp_revision': '1a622e23d0c344c55ccac285cab60c2ab991ac9a',    # svn r1919
   'gyp_next_revision': 'b5b1525b5b834559d9b84d4eb48117adc3dedb23',  # v0.22.4
+
+  # A branch, not a commit -- see note 4 above. The tip when this entry was
+  # added (2026-11-16) was
+  # 87cbeb359cbd3df3213df38d10e6b13f017a7d52  # 2026-11-13, "gn format BUILD.gn"
+  # so that is the revision to fall back to if a sync picks up a main that
+  # does not build.
+  'winwrap_revision': 'main',
 }
 
 # Only these hosts are allowed for dependencies in this DEPS file.
@@ -200,6 +217,34 @@ deps = {
   # Not in the original DEPS; required to generate at all. See note 3 above.
   'third_party/libxml':
     '{chromium_git}/chromium/src/third_party/libxml.git@{libxml_revision}',
+
+  # Windows XP support, and ours rather than third-party. winwrap supplies
+  # Win32 functions that pre-Win7 Windows does not export, so a binary built
+  # against a current SDK still loads there -- a statically imported symbol
+  # the target OS does not export is fatal at load, before any process code
+  # runs, so it cannot be fixed at the call site. It works by defining the
+  # __imp_<name> slots that dllimport call sites load through, which means no
+  # call site here has to change. At run time each function asks the running
+  # Windows for the real one first and only falls back to its own, so one
+  # binary covers XP and Win7+ both.
+  #
+  # This is why _WIN32_WINNT does not move for the XP work: winwrap lowers it
+  # to 0x0501 for its own sources only, and Sawbuck keeps building against the
+  # current SDK and links /SUBSYSTEM:5.01.
+  #
+  # Nothing builds against it yet. winwrap is GN-only -- BUILD.gn plus
+  # winwrap.gni, no .gyp -- so it needs a GYP build file written for it before
+  # it can join this build. Two things to know when that happens: it must be
+  # linked ahead of every other library, including the default libs, or call
+  # sites bind straight to the system DLL instead; and its own sources want
+  # /std:c++17, which is appended rather than replacing our /std:c++14 since
+  # the last /std: on the command line wins.
+  #
+  # The path matters. BUILD.gn imports //third_party/winwrap/winwrap.gni by
+  # absolute label, and README.chromium says to read the revision from the
+  # DEPS entry, so upstream already expects to live exactly here.
+  'third_party/winwrap':
+    '{github_git}/Alex313031/winwrap.git@{winwrap_revision}',
 
   'build':
     '{chromium_git}/chromium/src/build.git@{build_revision}',
