@@ -212,32 +212,54 @@
           ],
           'msvs_settings': {
             'VCLinkerTool': {
-              'AdditionalOptions': [
-                # Not optional, and not a belt-and-braces measure.
-                #
-                # winwrap captures a call by defining the __imp_<name> slot the
-                # call site loads through, which only works if winwrap is
-                # searched before the import library it stands in front of.
-                # Its own notes say that holds without reordering, because
-                # kernel32.lib arrives through the /DEFAULTLIB directives the
-                # SDK headers embed and those come after libraries named on the
-                # command line. True of Chromium's GN build; false here --
-                # common.gypi names kernel32.lib and a dozen more explicitly in
-                # AdditionalDependencies, so they are on the command line too
-                # and order decides.
-                #
-                # Measured, not theorised: with winwrap linked but searched
-                # after kernel32.lib, dumpbin showed every function it covers
-                # still bound to KERNEL32.dll in the finished binary -- the four
-                # Fls*, AcquireSRWLockExclusive, ReleaseSRWLockExclusive,
-                # WakeAllConditionVariable, SleepConditionVariableSRW and
-                # InitializeCriticalSectionEx. /WHOLEARCHIVE pulls every
-                # winwrap object in up front, so the slots are defined before
-                # kernel32 is ever consulted.
-                '/WHOLEARCHIVE:winwrap.lib',
+              # The '+' is the whole point: it is GYP's prepend policy for a
+              # list being merged into an existing one, so winwrap.lib lands
+              # at the FRONT of AdditionalDependencies, ahead of the
+              # kernel32.lib that common.gypi puts there. Plain append --
+              # which is what a key without the '+' does -- is what made the
+              # first two attempts fail.
+              #
+              # winwrap captures a call by defining the __imp_<name> slot the
+              # call site loads through, and libraries are searched in
+              # command-line order. winwrap's own notes say an explicitly
+              # linked winwrap wins without reordering, because kernel32.lib
+              # arrives only through the /DEFAULTLIB directives the SDK embeds
+              # and those are processed after command-line libraries. That
+              # holds for Chromium's GN build and not for this one:
+              # common.gypi names kernel32.lib and a dozen others explicitly,
+              # so they are command-line libraries too and position decides.
+              #
+              # Two attempts failed before this, both diagnosed from the
+              # import table rather than guessed at:
+              #
+              #   /WHOLEARCHIVE:winwrap.lib changed nothing whatsoever. The
+              #   option was on the link line, winwrap.lib was passed, the
+              #   archive held all 24 members including static_redirects.obj,
+              #   and dumpbin confirmed the symbols were present and correctly
+              #   decorated. It force-includes members at the point the
+              #   library appears in input order, which is after kernel32.lib
+              #   had already resolved the slots.
+              #
+              #   /INCLUDE: of a slot then made GetTickCount64 appear as a new
+              #   KERNEL32 import where there had been none. That is the
+              #   finding that settled it: the reference was created and
+              #   kernel32.lib, being earlier, is what satisfied it.
+              #
+              # Naming the library here means it appears twice on the command
+              # line, since MSBuild adds it again for the project reference.
+              # Harmless -- the second occurrence has nothing left to offer --
+              # and it is the first that decides.
+              'AdditionalDependencies+': [
+                '$(OutDir)lib\\winwrap.lib',
               ],
             },
           },
+          # /INCLUDE: is kept as well, per architecture below, because the
+          # ordering fix alone relies on something already referencing each
+          # slot. It guarantees static_redirects.obj is pulled even for a slot
+          # nothing happens to call, and one is enough: every
+          # WINWRAP_REDIRECT lives in that single object, whose initialisers
+          # then drag the ww_* implementations in behind them.
           # The subsystem version, which is the other half of the recipe:
           # winwrap supplies the imports XP does not export, and this is what
           # lets the loader accept the binary in the first place.
@@ -264,6 +286,14 @@
                 'VCLinkerTool': {
                   # /SUBSYSTEM:WINDOWS,5.01 -- SubSystem 2 is set above.
                   'MinimumRequiredVersion': '5.01',
+                  'AdditionalOptions': [
+                    # Pulls static_redirects.obj in. x86 decorates the slot
+                    # with a leading underscore and the stdcall argument size,
+                    # so the name differs from x64 -- confirmed against
+                    # dumpbin /symbols on winwrap.lib, which reports exactly
+                    # this spelling.
+                    '/INCLUDE:__imp__GetTickCount64@0',
+                  ],
                 },
               },
             },
@@ -274,6 +304,11 @@
                   # /SUBSYSTEM:WINDOWS,5.02. XP x64 and Server 2003, which is
                   # as low as the linker goes for this machine.
                   'MinimumRequiredVersion': '5.02',
+                  'AdditionalOptions': [
+                    # Same as x86, undecorated: no leading underscore and no
+                    # argument size, since x64 has one calling convention.
+                    '/INCLUDE:__imp_GetTickCount64',
+                  ],
                 },
               },
             },
