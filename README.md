@@ -1,39 +1,32 @@
 # Sawbuck-ng &nbsp; <img src="./sawbuck/icon.png" width="38" height="38">
 
-Sawbuck-ng is a maintained fork of [Sawbuck](https://code.google.com/archive/p/sawbuck/), a Chromium log viewer.
+Sawbuck-ng is a maintained fork of [Sawbuck](https://code.google.com/archive/p/sawbuck/), a Chromium log viewer.  
 
-Dependencies have been updated/restored, build support for Visual Studio 2022 added, with further enhancements planned. The original README is below:
+Dependencies have been updated/restored, build support for Visual Studio 2022 added, with further enhancements listed below.  
 
-----
+## Synopsis
 
-Sawbuck is a log viewer and controller for Windows Chrome logging, and for other applications or plugins that use the logging facility in Chrome base.
+Sawbuck is a log viewer and controller for Chromium logging on Windows, and for other applications or plugins that use
+the logging facility in Chromium's [`//base` library](https://chromium.googlesource.com/chromium/src/base/).
 
-Logging in Chrome is integrated with Event Tracing for Windows (ETW), which allows ETW controllers like Sawbuck to control log verbosity at runtime. The Chrome logging integration also captures the call stack at the logging site, which can then be resolved and displayed by log viewers such as Sawbuck. 
+Logging in Chromium is integrated with [Event Tracing for Windows (ETW)](https://learn.microsoft.com/en-us/windows-hardware/test/wpt/event-tracing-for-windows),
+which allows ETW controllers like Sawbuck to control log verbosity at runtime. The logging integration also captures the call stack at the logging site,
+which can then be resolved and displayed in Sawbuck using a [packaged `dbghelp.dll`](./third_party/debugging_tools/README.thirdparty).  
 
-How to get this for my own code?
-If you're using the Chrome base library, then integrating your logging with ETW is as simple as allocating a new GUID by running guidgen.exe, then initializing the ETW log provider as so.
+## Enhancements
+ - Bug fixes across the board.
+ - Updated dependencies to newer Chromium M49 revisions.
+ - Building with current toolchains restored.
+ - Legacy Windows support restored.
 
-```C++
-  #include "base/logging.h"
-  #include "base/logging_win.h"
-  #include <initguid.h>
+## Download
+Download a pre-built .msi installer from [Releases](https://github.com/Alex313031/sawbuck-ng/releases).
 
-  // {????????-????-????-????-????????}
-  DEFINE_GUID(kMyLogProvider,
-      0x????????,
-      0x????,
-      0x????,
-      0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??);
+## Usage
+For how to use Sawbuck or integrate your own app with Sawbuck, see [USAGE.md](./sawbuck/USAGE.md).
 
-  void InitLogging() {
-    logging::LogEventProvider::Initialize(kMyLogProvider);
-  }
-```
+## Building
+Instructions for building from source, can be found in [BUILDING.md](./BUILDING.md).
 
-You will then need to write your provider GUID and name to the registry for Sawbuck to know about it. Create a new key at
-
-HKEY_LOCAL_MACHINE\Software\Google\Sawbuck\Providers
-with your provider GUID as the name of the key, with your provider textual name as the default string value of the key. Feel free to send a patch to the Sawbuck installer with your changes to the installer's registration to get your provider added to Sawbuck. If you're not using Chrome base, you'll need to duplicate what chrome/base/logging_win.cc does.
-
-How to Contribute
-Start by downloading an installer, installing it and playing with Sawbuck. Browse and perhaps sign up to the [sawbuck-dev](https://groups.google.com/forum/#!forum/sawbuck-dev) discussion group. Get the sources and build them. Check out the issues list. Contribute a patch. Have fun!
+## License
+Licensed under the [Apache 2.0 License](./LICENSE.md), with third party libraries under their own respective licenses.
