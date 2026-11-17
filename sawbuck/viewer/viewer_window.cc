@@ -330,6 +330,40 @@ static bool TestAndOfferToStopSession(HWND parent,
   return true;
 }
 
+// Reports why capturing could not start, and returns false so each failure
+// path below can stay a single line.
+//
+// Worth a message box rather than a log line nobody sees: every one of those
+// paths used to 'return false' silently, and SetCapture then quietly undid the
+// menu check -- so the entire symptom of running Sawbuck unelevated was that
+// Capture appeared to do nothing at all. Starting the NT Kernel Logger needs
+// administrator rights, so that is the common case by a wide margin.
+//
+// The preflight above deliberately does not come through here. It has already
+// told the user the session was in use and been declined, and a second box
+// saying the same thing would be worse than none.
+static bool ReportCaptureFailure(HWND parent,
+                                 const wchar_t* what,
+                                 HRESULT hr) {
+  std::wstring message = base::StringPrintf(
+      L"%ls\n\n"
+      L"Error 0x%08X.\n\n"
+      L"Capturing starts an ETW session and the NT Kernel Logger, and the "
+      L"kernel logger cannot be started without administrator rights. If "
+      L"Sawbuck is not running elevated, that is almost certainly the "
+      L"reason -- 0x%08X is access denied.",
+      what,
+      // Cast because %X takes an unsigned int and HRESULT is a long. MSVC
+      // does not check this (PRINTF_FORMAT is a no-op there) but clang-cl
+      // does, and gyp_sawbuck.py can select it.
+      static_cast<unsigned int>(hr),
+      static_cast<unsigned int>(HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED)));
+
+  ::MessageBox(parent, message.c_str(), L"Cannot start capturing",
+               MB_OK | MB_ICONERROR);
+  return false;
+}
+
 bool ViewerWindow::StartCapturing() {
   DCHECK(NULL == log_controller_.session());
   DCHECK(NULL == kernel_controller_.session());
@@ -356,16 +390,20 @@ bool ViewerWindow::StartCapturing() {
   p->FlushTimer = 1;  // flush every second.
   p->BufferSize = 16;  // 16 K buffers.
   HRESULT hr = log_controller_.Start(kSessionName, &log_props);
-  if (FAILED(hr))
-    return false;
+  if (FAILED(hr)) {
+    return ReportCaptureFailure(
+        m_hWnd, L"Could not start the Sawbuck log trace session.", hr);
+  }
 
   // And open a consumer on it.
   log_consumer_.reset(new LogConsumer());
   log_consumer_->set_event_sink(this);
   log_consumer_->set_trace_sink(this);
   hr = log_consumer_->OpenRealtimeSession(kSessionName);
-  if (FAILED(hr))
-    return false;
+  if (FAILED(hr)) {
+    return ReportCaptureFailure(
+        m_hWnd, L"Could not open the Sawbuck log trace session.", hr);
+  }
 
   // Consume it in a new thread.
   CHECK(log_consumer_thread_.Start());
@@ -387,8 +425,10 @@ bool ViewerWindow::StartCapturing() {
   p->FlushTimer = 1;  // flush every second.
   p->BufferSize = 16;  // 16 K buffers.
   hr = kernel_controller_.Start(KERNEL_LOGGER_NAME, &kernel_props);
-  if (FAILED(hr))
-    return false;
+  if (FAILED(hr)) {
+    return ReportCaptureFailure(
+        m_hWnd, L"Could not start the NT Kernel Logger session.", hr);
+  }
 
   // And open a consumer on it.
   kernel_consumer_.reset(new KernelLogConsumer());
@@ -397,8 +437,10 @@ bool ViewerWindow::StartCapturing() {
   kernel_consumer_->set_process_event_sink(&process_info_service_);
   kernel_consumer_->set_is_64_bit_log(Is64BitSystem());
   hr = kernel_consumer_->OpenRealtimeSession(KERNEL_LOGGER_NAME);
-  if (FAILED(hr))
-    return false;
+  if (FAILED(hr)) {
+    return ReportCaptureFailure(
+        m_hWnd, L"Could not open the NT Kernel Logger session.", hr);
+  }
 
   // Consume it in a new thread.
   CHECK(kernel_consumer_thread_.Start());
