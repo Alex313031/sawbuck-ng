@@ -115,7 +115,12 @@
             '<(PRODUCT_DIR)/symsrv.dll',
           ],
           'outputs': [
-            '<(PRODUCT_DIR)/sawbuck.msi',
+            # Capitalised to match Sawbuck.exe, which viewer.gyp sets through
+            # 'product_name'. Note that NTFS is case-insensitive: an out/
+            # directory that already holds a lowercase sawbuck.msi from an
+            # earlier build will be written through rather than renamed, so
+            # delete it once if the casing looks unchanged.
+            '<(PRODUCT_DIR)/Sawbuck.msi',
           ],
           'action': [
             '<(light_exe)',
