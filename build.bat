@@ -16,8 +16,10 @@ REM limitations under the License.
 REM
 REM Syncs dependencies and builds every flavour of Sawbuck in one go.
 REM
-REM   build.bat                  sync, generate, then build all four flavours
+REM   build.bat                  sync, generate, then build Release x86 + x64
+REM   build.bat --debug          build the Debug flavours as well
 REM   build.bat --no-sync        skip the gclient steps and just rebuild
+REM   build.bat --no-winwrap     build without Windows XP support
 REM   build.bat --jobs 32        cap MSBuild parallelism (default: all cores)
 REM   build.bat --help           show usage
 REM
@@ -32,8 +34,14 @@ REM      use_relative_paths, and the solution entry names this directory, so
 REM      the file belongs one level above the repository root.
 REM   2. gclient sync --force --reset --delete_unversioned_trees, whose hooks
 REM      apply patches/ to the synced dependencies and then run
-REM      tools/gyp_sawbuck.py to generate sawbuck/sawbuck.sln.
-REM   3. msbuild for Debug|Win32, Release|Win32, Debug|x64, Release|x64.
+REM      tools/gyp_sawbuck.py to generate sawbuck/sawbuck.sln -- with
+REM      GYP_DEFINES=sawbuck_use_winwrap=1 unless --no-winwrap was given.
+REM   3. msbuild for Release|Win32 and Release|x64, plus Debug|Win32 and
+REM      Debug|x64 if --debug was given. Release only by default because that
+REM      is what gets shipped and what anyone reaching for this script wants;
+REM      a Debug build doubles the time for output most runs never open.
+REM      Each flavour's installer is then renamed to carry its architecture,
+REM      so the four cannot collide once collected in one place.
 REM
 REM Three notes on that sync. --reset reverts the patches that patches/
 REM applies to build/common.gypi, so they have to be re-applied afterwards --
@@ -65,6 +73,8 @@ for %%I in ("%REPO%\..") do set "PARENT=%%~fI"
 set "SLN=%REPO%\sawbuck\sawbuck.sln"
 
 set "DO_SYNC=1"
+set "DO_WINWRAP=1"
+set "DO_DEBUG=0"
 set "JOBS="
 
 REM Options may appear in any order. 'shift' takes effect from the next line
@@ -72,6 +82,8 @@ REM on, which is why each branch jumps back to re-read %1.
 :parse_args
 if "%~1"=="" goto :args_done
 if /i "%~1"=="--no-sync" set "DO_SYNC=0" & shift & goto :parse_args
+if /i "%~1"=="--no-winwrap" set "DO_WINWRAP=0" & shift & goto :parse_args
+if /i "%~1"=="--debug" set "DO_DEBUG=1" & shift & goto :parse_args
 if /i "%~1"=="--jobs" set "JOBS=%~2" & shift & shift & goto :parse_args
 if /i "%~1"=="--help" goto :usage
 if /i "%~1"=="-h" goto :usage
@@ -168,10 +180,65 @@ if defined GYP_MSVS_VERSION (
   echo       wrong, set GYP_MSVS_VERSION yourself before running this.
 )
 
+REM Before the winwrap block below, and not after it: with --no-sync nothing
+REM is regenerated, so winwrap is whichever way the existing solution was
+REM generated and this script has no say in it. Announcing a default it is not
+REM applying would be worse than saying nothing.
 if "%DO_SYNC%"=="0" (
   echo [1-2/3] Skipping sync and generation ^(--no-sync^).
+  echo         Windows XP support is whatever the solution was generated with;
+  echo         changing it means regenerating. See BUILDING.md.
   goto :build
 )
+
+REM Windows XP support, which is this script's default rather than the GYP
+REM file's: sawbuck.gypi declares sawbuck_use_winwrap as 0, matching how
+REM upstream winwrap declares use_winwrap, and this turns it on so that the
+REM scripted build -- the one releases come from -- covers XP through 11 from
+REM one binary. See sawbuck/sawbuck.gypi for what that costs.
+REM
+REM Through GYP_DEFINES rather than a -D argument, because this script does not
+REM run the generator: tools/gyp_sawbuck.py is a gclient hook, invoked by the
+REM sync below, so there is no command line here to add to. GYP reads
+REM GYP_DEFINES itself and merges it ahead of any -D, so a -D on a hand
+REM generation still overrides this.
+REM
+REM Three-way precedence, strongest first: --no-winwrap, then the variable if
+REM GYP_DEFINES already names it, then this script's default of on. Appending
+REM is what makes the first of those work -- GYP splits GYP_DEFINES into a
+REM list and the last setting of a name is the one it keeps -- so
+REM --no-winwrap genuinely overrides an ambient sawbuck_use_winwrap=1 rather
+REM than being quietly ignored by it.
+REM
+REM Written with labels rather than an if/else chain because every branch here
+REM reads or writes GYP_DEFINES, and a parenthesised block expands %VAR% when
+REM the block is parsed rather than when it runs.
+if "%DO_WINWRAP%"=="0" (
+  set "WINWRAP_DEFINE=sawbuck_use_winwrap=0"
+  goto :winwrap_apply
+)
+if not defined GYP_DEFINES goto :winwrap_on
+echo "%GYP_DEFINES%"| findstr /i /c:"sawbuck_use_winwrap" >nul
+if errorlevel 1 goto :winwrap_on
+echo [0/3] Windows XP support left to sawbuck_use_winwrap in your GYP_DEFINES.
+goto :winwrap_done
+
+:winwrap_on
+set "WINWRAP_DEFINE=sawbuck_use_winwrap=1"
+
+:winwrap_apply
+if defined GYP_DEFINES (
+  set "GYP_DEFINES=%GYP_DEFINES% %WINWRAP_DEFINE%"
+) else (
+  set "GYP_DEFINES=%WINWRAP_DEFINE%"
+)
+if "%DO_WINWRAP%"=="0" (
+  echo [0/3] Windows XP support off ^(--no-winwrap^).
+) else (
+  echo [0/3] Windows XP support on ^(sawbuck_use_winwrap=1^).
+)
+
+:winwrap_done
 
 REM ---------------------------------------------------------------- 1. gclient
 where gclient >nul 2>&1
@@ -237,10 +304,14 @@ REM parenthesised for block does not work, because the whole block is parsed
 REM once and %FAILED% would expand to its value from before the loop started.
 REM A called routine is re-parsed per invocation, so plain expansion is right
 REM and delayed expansion is not needed.
+REM
+REM Release only unless --debug. The Debug calls are guarded one at a time
+REM rather than wrapped in a block so that each stays a plain 'call', which is
+REM what lets :build_one append to FAILED by ordinary expansion.
 set "FAILED="
-call :build_one Debug   Win32
+if "%DO_DEBUG%"=="1" call :build_one Debug   Win32
 call :build_one Release Win32
-call :build_one Debug   x64
+if "%DO_DEBUG%"=="1" call :build_one Debug   x64
 call :build_one Release x64
 
 echo.
@@ -255,11 +326,16 @@ if defined FAILED (
   endlocal
   exit /b 1
 )
-echo  All four flavours built. Output is under:
-echo    %REPO%\out\Debug_x86
+if "%DO_DEBUG%"=="1" (
+  echo  All four flavours built. Output is under:
+) else (
+  echo  Both Release flavours built. Output is under:
+)
+if "%DO_DEBUG%"=="1" echo    %REPO%\out\Debug_x86
 echo    %REPO%\out\Release_x86
-echo    %REPO%\out\Debug_x64
+if "%DO_DEBUG%"=="1" echo    %REPO%\out\Debug_x64
 echo    %REPO%\out\Release_x64
+if not "%DO_DEBUG%"=="1" echo  Add --debug for the Debug flavours.
 echo ==========================================================
 popd
 endlocal
@@ -271,24 +347,83 @@ REM FAILED, which is shared because 'call :label' does not start a new scope.
 :build_one
 set "CFG=%~1"
 set "PLAT=%~2"
+REM MSBuild's platform is Win32 or x64; the output directory and the installer
+REM name both use x86 or x64. sawbuck/sawbuck.gypi sets OutputDirectory to
+REM out\$(ConfigurationName)_x86 and _x64 on the per-architecture abstract
+REM configurations, so this has to agree with it.
+if /i "%PLAT%"=="Win32" (set "ARCH=x86") else (set "ARCH=%PLAT%")
 echo.
 echo ---- %CFG% %PLAT% ------------------------------------------------
 "%MSBUILD%" "%SLN%" /nologo %MFLAG% /v:minimal /clp:Summary /p:Configuration=%CFG% /p:Platform=%PLAT%
 if errorlevel 1 (
   echo ---- %CFG% %PLAT%: FAILED, continuing with the next flavour
   set "FAILED=%FAILED% %CFG%/%PLAT%"
+  exit /b 0
+)
+call :name_msi "%REPO%\out\%CFG%_%ARCH%" "%ARCH%"
+echo ---- %CFG% %PLAT%: ok
+exit /b 0
+
+REM Renames the flavour's installer to carry its architecture, so all four can
+REM sit in one directory without colliding: Sawbuck_x86.msi, Sawbuck_x64.msi.
+REM %1 is the output directory, %2 the architecture.
+REM
+REM Here rather than in sawbuck/installer/installer.gyp, which is where it
+REM belongs and cannot go. One generated project holds all four
+REM configurations, so nothing GYP substitutes into the light command line can
+REM differ between them -- the same constraint that makes the installer pass
+REM -dMsiPlatform=$(Platform) and makes copy_dlls a post-build step. MSBuild
+REM has no macro spelling the architecture as x86 either: $(Platform) says
+REM Win32. The remaining GYP-side option was a custom per-configuration
+REM property through 'msbuild_settings', which is emitted verbatim -- but
+REM setting that on a configuration makes GYP ignore msvs_settings for every
+REM configuration inheriting it, which would discard common.gypi's entire
+REM compiler and linker setup.
+REM
+REM One consequence, stated rather than hidden: the light action's declared
+REM output is Sawbuck.msi, so moving it means MSBuild rebuilds the installer
+REM on the next build even when nothing changed. That costs a few seconds at
+REM the end of a flavour -- the cab holds the executable and the debugging
+REM DLLs -- and it is why this moves rather than copies: two installers of the
+REM same build, one of them anonymous, is worse than rebuilding one.
+:name_msi
+if exist "%~1\Sawbuck.msi" goto :name_msi_move
+
+REM Nothing to rename, which has two meanings and they are not equally fine.
+REM An already-renamed installer means MSBuild considered the light action up
+REM to date despite its declared output being absent -- so that file is from an
+REM earlier build. Nothing at all means the installer did not build, which the
+REM msbuild output above will have said more about.
+if exist "%~1\Sawbuck_%~2.msi" (
+  echo        installer: Sawbuck_%~2.msi ^(not rebuilt this run^)
 ) else (
-  echo ---- %CFG% %PLAT%: ok
+  echo        WARNING: no installer in %~1
+)
+exit /b 0
+
+:name_msi_move
+move /Y "%~1\Sawbuck.msi" "%~1\Sawbuck_%~2.msi" >nul
+if errorlevel 1 (
+  echo        WARNING: could not rename Sawbuck.msi to Sawbuck_%~2.msi in %~1
+) else (
+  echo        installer: Sawbuck_%~2.msi
 )
 exit /b 0
 
 :usage
-echo Usage: build.bat [--no-sync] [--jobs N]
+echo Usage: build.bat [--debug] [--no-sync] [--no-winwrap] [--jobs N]
 echo.
-echo   --no-sync   Skip gclient sync and runhooks; build the solution as it
-echo               stands. Fails if it has not been generated yet.
-echo   --jobs N    Pass /m:N to MSBuild instead of bare /m. Default is /m,
-echo               which uses every core.
+echo Builds Release for x86 and x64. Each flavour's installer is named after
+echo its architecture: Sawbuck_x86.msi, Sawbuck_x64.msi.
+echo.
+echo   --debug        Build the Debug flavours as well, for all four in total.
+echo   --no-sync      Skip gclient sync and runhooks; build the solution as it
+echo                  stands. Fails if it has not been generated yet.
+echo   --no-winwrap   Generate without winwrap, giving up Windows XP support.
+echo                  The default links it, so one binary runs on XP through
+echo                  11. Needs generation, so it does nothing with --no-sync.
+echo   --jobs N       Pass /m:N to MSBuild instead of bare /m. Default is /m,
+echo                  which uses every core.
 endlocal
 exit /b 1
 
