@@ -174,11 +174,27 @@ limitations under the License.
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
 
     <!--
-      Add an option to launch Sawbuck at the end of installation.
+      Add an option to launch Sawbuck at the end of installation, ticked.
       This is all boilerplate from WiX docs.
+
+      An MSI CheckBox renders ticked when its property holds any non-empty
+      value, so giving WIXUI_EXITDIALOGOPTIONALCHECKBOX one up front is the
+      whole of "launch by default"; everything else was already here. The
+      control writes 1 back when ticked, which is what the Publish above tests
+      for.
+
+      Two things this deliberately does not change. The name is all capitals,
+      so it is a public property and an unattended install can still decline:
+      msiexec /i Sawbuck_x86.msi WIXUI_EXITDIALOGOPTIONALCHECKBOX=0. And a
+      silent install never launches anything regardless, because the Publish
+      that runs LaunchApplication belongs to the UI sequence, which /qn does
+      not execute. A silent install that started a GUI would be a poor
+      surprise.
     -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT"
-        Value="Launch Sawbuck?" />
+        Value="Launch Sawbuck" />
 
     <Property Id="WixShellExecTarget" Value="[#SawbuckExeFile]" />
     <CustomAction Id="LaunchApplication"
