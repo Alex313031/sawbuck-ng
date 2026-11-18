@@ -150,6 +150,16 @@
             '<(light_exe)',
             '<(INTERMEDIATE_DIR)/sawbuck.wixobj',
             '-sice:ICE49',  # suppress the 'default value is not string' ICE
+            # ICE61 is "this product should remove only older versions of
+            # itself", which is precisely what sawbuck.wxs now asks for: its
+            # Upgrade row includes the current version so that a rebuilt MSI
+            # of the same version replaces the installed one instead of
+            # installing beside it. Suppressed deliberately rather than worked
+            # around, because the ICE is right about what the table says and
+            # wrong about whether we want it -- Product Id='*' means every
+            # build is a different ProductCode, so same-version replacement is
+            # the only way a rebuild is recognised at all.
+            '-sice:ICE61',
             '-ext', 'WixUIExtension',
             '-ext', 'WixUtilExtension',
             '-out', '<@(_outputs)',

@@ -128,10 +128,32 @@ limitations under the License.
                       OnlyDetect="yes"
                       Language="1033"
                       Property="NEWPRODUCTFOUND" />
+      <!--
+        IncludeMaximum is yes, so this range ends at and includes the version
+        being installed. Without that, installing a rebuilt MSI of the same
+        version left two entries in Add/Remove Programs.
+
+        The reason is Product Id='*' above: a fresh ProductCode every build.
+        Windows Installer identifies an installed product by ProductCode, so a
+        rebuild is a product it has never seen; the only thing that can tell it
+        otherwise is a matching row in this table. With the range stopping just
+        below the current version, a same-version rebuild fell into neither row:
+        not newer, so not a downgrade, and not older, so not an upgrade. msiexec
+        did the only remaining thing and installed it alongside.
+
+        Re-running the *same* .msi file always worked, which is what pointed at
+        this: that file carries the ProductCode already on the machine, so it
+        goes to maintenance mode and never consults the Upgrade table at all.
+
+        The two rows stay disjoint. NEWPRODUCTFOUND is strictly greater than
+        the current version, this one is up to and including it, so nothing
+        matches both and PreventDowngrading still only fires for a genuinely
+        newer product.
+      -->
       <UpgradeVersion Minimum="$(var.RTMProductVersion)"
                       IncludeMinimum="yes"
                       Maximum="$(var.ProductVersion)"
-                      IncludeMaximum="no"
+                      IncludeMaximum="yes"
                       Language="1033"
                       Property="UPGRADEFOUND" />
     </Upgrade>
