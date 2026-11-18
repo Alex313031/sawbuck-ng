@@ -34,8 +34,9 @@ REM      use_relative_paths, and the solution entry names this directory, so
 REM      the file belongs one level above the repository root.
 REM   2. gclient sync --force --reset --delete_unversioned_trees, whose hooks
 REM      apply patches/ to the synced dependencies and then run
-REM      tools/gyp_sawbuck.py to generate sawbuck/sawbuck.sln -- with
-REM      GYP_DEFINES=sawbuck_use_winwrap=1 unless --no-winwrap was given.
+REM      tools/gyp_sawbuck.py to generate sawbuck/sawbuck.sln. That script
+REM      defaults Windows XP support on; --no-winwrap regenerates without it
+REM      once the sync has finished.
 REM   3. msbuild for Release|Win32 and Release|x64, plus Debug|Win32 and
 REM      Debug|x64 if --debug was given. Release only by default because that
 REM      is what gets shipped and what anyone reaching for this script wants;
@@ -180,10 +181,10 @@ if defined GYP_MSVS_VERSION (
   echo       wrong, set GYP_MSVS_VERSION yourself before running this.
 )
 
-REM Before the winwrap block below, and not after it: with --no-sync nothing
-REM is regenerated, so winwrap is whichever way the existing solution was
-REM generated and this script has no say in it. Announcing a default it is not
-REM applying would be worse than saying nothing.
+REM With --no-sync nothing is regenerated, so winwrap is whichever way the
+REM existing solution was generated and this script has no say in it. Said
+REM rather than left implied, because a solution generated without it produces
+REM a binary that only misbehaves on XP.
 if "%DO_SYNC%"=="0" (
   echo [1-2/3] Skipping sync and generation ^(--no-sync^).
   echo         Windows XP support is whatever the solution was generated with;
@@ -191,54 +192,23 @@ if "%DO_SYNC%"=="0" (
   goto :build
 )
 
-REM Windows XP support, which is this script's default rather than the GYP
-REM file's: sawbuck.gypi declares sawbuck_use_winwrap as 0, matching how
-REM upstream winwrap declares use_winwrap, and this turns it on so that the
-REM scripted build -- the one releases come from -- covers XP through 11 from
-REM one binary. See sawbuck/sawbuck.gypi for what that costs.
+REM Windows XP support is not set up here at all, which is deliberate and was
+REM arrived at the hard way.
 REM
-REM Through GYP_DEFINES rather than a -D argument, because this script does not
-REM run the generator: tools/gyp_sawbuck.py is a gclient hook, invoked by the
-REM sync below, so there is no command line here to add to. GYP reads
-REM GYP_DEFINES itself and merges it ahead of any -D, so a -D on a hand
-REM generation still overrides this.
+REM tools/gyp_sawbuck.py defaults it on, and that script is what every route
+REM into a generated solution goes through -- this one, a bare run of it, or a
+REM plain `gclient runhooks`. So there is nothing for this script to pass, and
+REM --no-winwrap is handled after the sync instead, by regenerating.
 REM
-REM Three-way precedence, strongest first: --no-winwrap, then the variable if
-REM GYP_DEFINES already names it, then this script's default of on. Appending
-REM is what makes the first of those work -- GYP splits GYP_DEFINES into a
-REM list and the last setting of a name is the one it keeps -- so
-REM --no-winwrap genuinely overrides an ambient sawbuck_use_winwrap=1 rather
-REM than being quietly ignored by it.
-REM
-REM Written with labels rather than an if/else chain because every branch here
-REM reads or writes GYP_DEFINES, and a parenthesised block expands %VAR% when
-REM the block is parsed rather than when it runs.
-if "%DO_WINWRAP%"=="0" (
-  set "WINWRAP_DEFINE=sawbuck_use_winwrap=0"
-  goto :winwrap_apply
-)
-if not defined GYP_DEFINES goto :winwrap_on
-echo "%GYP_DEFINES%"| findstr /i /c:"sawbuck_use_winwrap" >nul
-if errorlevel 1 goto :winwrap_on
-echo [0/3] Windows XP support left to sawbuck_use_winwrap in your GYP_DEFINES.
-goto :winwrap_done
-
-:winwrap_on
-set "WINWRAP_DEFINE=sawbuck_use_winwrap=1"
-
-:winwrap_apply
-if defined GYP_DEFINES (
-  set "GYP_DEFINES=%GYP_DEFINES% %WINWRAP_DEFINE%"
-) else (
-  set "GYP_DEFINES=%WINWRAP_DEFINE%"
-)
-if "%DO_WINWRAP%"=="0" (
-  echo [0/3] Windows XP support off ^(--no-winwrap^).
-) else (
-  echo [0/3] Windows XP support on ^(sawbuck_use_winwrap=1^).
-)
-
-:winwrap_done
+REM What was here before: export GYP_DEFINES=sawbuck_use_winwrap=1 and let GYP
+REM read it. That did not work, and failed silently. Generation runs inside a
+REM gclient hook, so the variable had to survive this script -> gclient.bat ->
+REM vpython3 -> gclient.py -> the hook's subprocess. gclient copies os.environ
+REM for hooks and every layer uses setlocal rather than scrubbing, so it should
+REM have arrived; running the generator by hand worked and running build.bat
+REM did not. Rather than keep chasing it: a setting whose failure mode is a
+REM binary that builds, runs, passes its tests and then will not load on XP
+REM does not belong in an environment variable crossing five processes.
 
 REM ---------------------------------------------------------------- 1. gclient
 where gclient >nul 2>&1
@@ -283,6 +253,21 @@ if errorlevel 1 (
   echo        is in a hook -- either tools/apply_patches.py or
   echo        tools/gyp_sawbuck.py. Check the end of the output above.
   goto :fail
+)
+
+REM --no-winwrap, by regenerating over what the hook just produced. The hook
+REM takes no arguments and defaults XP support on, so declining it means
+REM saying so on a command line this script controls -- which is the whole
+REM point of not routing the setting through the environment. Generation is
+REM seconds; the sync before it is what takes the time.
+if "%DO_WINWRAP%"=="0" (
+  echo.
+  echo [2/3] Regenerating without winwrap ^(--no-winwrap^)
+  call python3 "%REPO%\tools\gyp_sawbuck.py" --no-winwrap
+  if errorlevel 1 (
+    echo ERROR: regenerating without winwrap failed.
+    goto :fail
+  )
 )
 
 :build

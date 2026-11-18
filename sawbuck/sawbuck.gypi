@@ -47,26 +47,29 @@
 
     # Link winwrap and target Windows XP.
     #
-    # The declared default is off, matching how upstream declares use_winwrap
-    # in winwrap.gni -- but build.bat turns it on, so the scripted build, which
-    # is the one that produces releases, covers XP through 11 from a single
-    # binary. It does that by exporting
+    # The declared default here is off, matching how upstream declares
+    # use_winwrap in winwrap.gni -- but the generator turns it on, so every
+    # build covers XP through 11 from a single binary unless asked not to.
     #
-    #   GYP_DEFINES=sawbuck_use_winwrap=1
+    # tools/gyp_sawbuck.py is what applies it, by appending
+    # -D sawbuck_use_winwrap=1 unless told otherwise. Decline it with
+    # gyp_sawbuck.py --no-winwrap, or build.bat --no-winwrap, which regenerates
+    # with that flag once its sync has finished.
     #
-    # which GYP reads by itself, and which therefore reaches the generation
-    # that happens inside the gclient hook rather than on a command line
-    # build.bat controls. Run build.bat --no-winwrap to leave it off.
+    # It lives in the generator because that is the one place every route into
+    # a generated solution passes through, and the previous arrangement proved
+    # why that matters: build.bat exported
+    # GYP_DEFINES=sawbuck_use_winwrap=1 and relied on GYP reading it inside a
+    # gclient hook, five processes away. Generating by hand worked; build.bat
+    # did not, with no diagnostic anywhere.
     #
-    # Worth knowing, because it is the one sharp edge of putting the default in
-    # the script: generating any other way does not get it. A bare
-    #
-    #   python3 tools/gyp_sawbuck.py
-    #
-    # or a plain `gclient runhooks` regenerates the solution with winwrap off
-    # and says nothing about it, and a following `build.bat --no-sync` then
-    # produces a binary that will not start on XP. Set the same variable, or
-    # pass -D sawbuck_use_winwrap=1, when generating by hand.
+    # The failure is invisible by construction. A solution generated without
+    # winwrap builds, runs and passes its tests; the only symptom is
+    # Sawbuck.exe importing FlsAlloc, IsThreadAFiber,
+    # InitializeCriticalSectionEx and the SRWLOCK family straight from
+    # kernel32, and then not loading on XP. Generation now says which way it
+    # went, and check_imports.py answers it from a finished binary -- see
+    # BUILDING.md.
     #
     # The same switch sets the linker's subsystem version, because the two
     # have to agree in both directions. Without winwrap, a binary claiming

@@ -94,14 +94,16 @@ If you would rather drive the steps yourself:
 ::    directory, so it belongs in the parent, not here.
 copy gclient ..\.gclient
 
-:: 2. Ask for Windows XP support, which build.bat would have done for you.
-::    GYP reads this itself, so it reaches the generation that the sync's
-::    hooks perform. Leave it out for a Vista-and-newer build.
-set GYP_DEFINES=sawbuck_use_winwrap=1
-
-:: 3. Sync. The hooks that run afterwards apply patches/ to the synced
-::    dependencies and then generate the solution.
+:: 2. Sync. The hooks that run afterwards apply patches/ to the synced
+::    dependencies and then generate the solution, with Windows XP support,
+::    which the generator defaults to.
 gclient sync --force --reset --delete_unversioned_trees
+
+:: 3. Only for a Vista-and-newer build: regenerate without winwrap. Setting
+::    GYP_DEFINES here would not work -- it does not reach the hook that did
+::    the generating, which is the whole reason the default moved into the
+::    generator.
+python3 tools\gyp_sawbuck.py --no-winwrap
 
 :: 4. Build one flavour.
 msbuild sawbuck\sawbuck.sln /m /p:Configuration=Release /p:Platform=Win32
@@ -114,15 +116,13 @@ finished, so the ordering works out. Re-running them is harmless.
 To regenerate the solution without syncing:
 
 ```bat
-python3 tools\gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
+python3 tools\gyp_sawbuck.py
 ```
 
 GYP cannot reliably detect Visual Studio 2017 or newer on its own — its probe
 reads a registry key those versions no longer write — so set
 `GYP_MSVS_VERSION=2022` if generation complains. `build.bat` does this for you
-from `vswhere`, along with the `sawbuck_use_winwrap=1` above, which is why that
-has to be named here: without it the solution loses Windows XP support
-silently. See [Generating by hand](#generating-by-hand).
+from `vswhere`.
 
 #### Tests
 
@@ -159,15 +159,25 @@ not.
 **Nothing to do: `build.bat` turns XP support on.** It produces a binary that
 runs on XP through 11, and there is no separate XP build to make.
 
-The switch is `sawbuck_use_winwrap`, and it lives in two places worth keeping
-straight. `sawbuck/sawbuck.gypi` declares it `0`, matching how upstream winwrap
-declares `use_winwrap`; `build.bat` exports
-`GYP_DEFINES=sawbuck_use_winwrap=1`, which GYP reads by itself, so generation
-inside the `gclient` hook picks it up. **Generating any other way therefore
-leaves it off** — see [Generating by hand](#generating-by-hand) below, because
-nothing warns you.
+The switch is `sawbuck_use_winwrap`. `sawbuck/sawbuck.gypi` declares it `0`,
+matching how upstream winwrap declares `use_winwrap`, and
+`tools/gyp_sawbuck.py` turns it on. The default lives in the generator because
+that is the one place every route into a generated solution passes through —
+`build.bat`, a bare `python3 tools/gyp_sawbuck.py`, a plain `gclient runhooks`
+— and generation now prints which way it went:
 
-Set either way, it does two things that only work together:
+```
+Windows XP support: on (this generator's default)
+```
+
+It was previously `build.bat` exporting `GYP_DEFINES=sawbuck_use_winwrap=1`,
+which did not survive into the `gclient` hook that runs the generator, so
+`build.bat` silently produced builds without XP support while generating by
+hand worked. Worth knowing because of how that presents: the binary builds,
+runs and passes its tests, and only fails at load on XP. See
+[Checking the result](#checking-the-result).
+
+It does two things that only work together:
 
  - Links [winwrap](https://github.com/Alex313031/winwrap), which supplies the
    Win32 functions XP does not export. A statically imported symbol the OS
@@ -211,33 +221,29 @@ The result needs Vista or newer. Worth doing to isolate a fault — if something
 misbehaves and winwrap is a suspect, this is the comparison — and it is also
 the configuration upstream Sawbuck shipped.
 
-`--no-winwrap` works by appending `sawbuck_use_winwrap=0`, and GYP keeps the
-last setting of a name, so it overrides a `sawbuck_use_winwrap=1` you already
-had in `GYP_DEFINES` rather than losing to it. It only reaches the build
-through generation, so it does nothing alongside `--no-sync`; the script says so
-rather than ignoring it.
+`build.bat --no-winwrap` works by regenerating once its sync has finished, with
+`gyp_sawbuck.py --no-winwrap` — the hook takes no arguments, so declining the
+default means saying so on a command line the script controls. Generation is
+seconds; the sync before it is what takes the time. It only reaches the build
+through generation, so it does nothing alongside `--no-sync`, and the script
+says so rather than ignoring it.
 
 #### Generating by hand
 
-Generation normally happens inside the `gclient` hook, where `build.bat`'s
-`GYP_DEFINES` reaches it. Drive the generator yourself and there is no such
-environment, so **you get a solution without XP support and nothing says so.**
-Pass it explicitly:
-
 ```bat
-python3 tools\gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
+python3 tools\gyp_sawbuck.py
 ```
 
-or set the variable for the shell, which also covers a bare `gclient runhooks`:
+Nothing extra to pass: the generator applies the winwrap default itself, so
+this is equivalent to what `build.bat` generates, and it says so as it runs.
+Decline it with `--no-winwrap`.
 
-```bat
-set GYP_DEFINES=sawbuck_use_winwrap=1
-```
-
-The reason this is worth a heading of its own: the resulting binary builds and
-runs perfectly on the machine that built it. It fails at load on XP, which is
-the one place nobody is looking. `check_imports.py` under
-[Checking the result](#checking-the-result) is what catches it in a second.
+This used to be the *only* way to get XP support, because the default lived in
+`build.bat` as an exported `GYP_DEFINES` that never reached the hook doing the
+generating. The resulting binary built, ran and passed its tests on the machine
+that built it, and failed at load on XP — the one place nobody was looking.
+Which is the argument for [Checking the result](#checking-the-result) rather
+than for trusting any of this.
 
 #### Additional requirements
 

@@ -104,6 +104,10 @@ def parse_args():
     parser.add_argument('--parallel', action='store_true',
                         help='load build files in parallel. Off by default; '
                              'see the note on Windows and core counts below.')
+    parser.add_argument('--no-winwrap', action='store_true',
+                        help='generate without winwrap, giving up Windows XP '
+                             'support. The default links it, so one binary '
+                             'runs on XP through 11.')
     parser.add_argument('gyp_args', nargs='*', metavar='-- GYP_ARG',
                         help='additional arguments passed through to GYP')
     return parser.parse_args()
@@ -148,6 +152,48 @@ def main():
         # Carried over from the DEPS.sawbuck hook.
         '--no-circular-check',
     ]
+
+    # Windows XP support, decided here because this is the one place every
+    # route into a generated solution passes through.
+    #
+    # It used to be build.bat exporting GYP_DEFINES=sawbuck_use_winwrap=1, and
+    # that did not work. Generation happens inside a gclient hook, so the
+    # setting had to survive build.bat -> gclient.bat -> vpython3 -> gclient.py
+    # -> the hook subprocess; gclient copies os.environ for hooks and every
+    # layer uses setlocal rather than scrubbing, so it should have arrived, and
+    # empirically it did not. Running the generator by hand worked and
+    # build.bat did not, which is as far as that was worth chasing: an
+    # environment variable crossing five processes is a bad channel for a
+    # setting whose failure mode is silent.
+    #
+    # Silent is the operative word. A solution generated without it builds,
+    # runs and passes its tests, and the only symptom is Sawbuck.exe importing
+    # FlsAlloc, IsThreadAFiber, InitializeCriticalSectionEx and the SRWLOCK
+    # family straight from kernel32 -- so it fails at load on XP, and nowhere
+    # anyone was looking.
+    #
+    # GYP_DEFINES is still honoured for anyone who sets it deliberately, and
+    # an explicit -D still wins, but neither is how the default arrives.
+    gyp_defines = os.environ.get('GYP_DEFINES', '')
+    asked_for_winwrap = ('sawbuck_use_winwrap' in gyp_defines or
+                         any('sawbuck_use_winwrap' in a for a in args.gyp_args))
+
+    if args.no_winwrap:
+        argv += ['-D', 'sawbuck_use_winwrap=0']
+        winwrap_note = 'off (--no-winwrap)'
+    elif asked_for_winwrap:
+        winwrap_note = 'as requested on %s' % (
+            'GYP_DEFINES' if 'sawbuck_use_winwrap' in gyp_defines
+            else 'the command line')
+    else:
+        argv += ['-D', 'sawbuck_use_winwrap=1']
+        winwrap_note = "on (this generator's default)"
+
+    # Said out loud, because the alternative is reading it out of a finished
+    # binary's import table. Whether XP support was in a build has been
+    # ambiguous twice now, and one line in the generation log settles it --
+    # naming where the answer came from, so a surprising one can be traced.
+    print('Windows XP support: %s' % winwrap_note)
 
     if not args.parallel:
         # GYP's parallel loader does multiprocessing.Pool(cpu_count()), and on
