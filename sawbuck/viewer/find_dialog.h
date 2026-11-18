@@ -17,8 +17,9 @@
 #define SAWBUCK_VIEWER_FIND_DIALOG_H_
 
 #include <atlbase.h>
-#include <atlcrack.h>
+#include <atlapp.h>
 #include <atlwin.h>
+#include <atlcrack.h>
 #include <string>
 #include "resource.h"
 

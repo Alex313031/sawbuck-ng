@@ -17,6 +17,7 @@
 #define SAWBUCK_VIEWER_LIST_VIEW_BASE_H_
 
 #include <atlbase.h>
+#include <atlapp.h>
 #include <atlwin.h>
 #include <atlctrls.h>
 

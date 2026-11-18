@@ -18,6 +18,7 @@
 
 #include <atlbase.h>
 #include <atlapp.h>
+#include <atlwin.h>
 #include <atlcrack.h>
 #include <atlctrls.h>
 #include <atlframe.h>

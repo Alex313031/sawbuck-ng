@@ -16,6 +16,8 @@
 #include "sawbuck/viewer/log_viewer.h"
 
 #include <atlbase.h>
+#include <atlapp.h>
+#include <atlwin.h>
 #include <atlframe.h>
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"

@@ -17,8 +17,9 @@
 #define SAWBUCK_VIEWER_VIEWER_WINDOW_H_
 
 #include <atlbase.h>
-#include <atlcrack.h>
 #include <atlapp.h>
+#include <atlwin.h>
+#include <atlcrack.h>
 #include <atlctrls.h>
 #include <atldlgs.h>
 #include <atlframe.h>

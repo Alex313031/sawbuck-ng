@@ -17,6 +17,9 @@
 
 #include <stdint.h>
 
+#include <atlbase.h>
+#include <atlapp.h>
+#include <atlwin.h>
 #include <atlalloc.h>
 #include <atlframe.h>
 #include <wmistr.h>
