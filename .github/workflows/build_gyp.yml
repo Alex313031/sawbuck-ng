@@ -33,6 +33,12 @@ on:
 permissions:
   contents: read
 
+env:
+  # The Windows SDK this build is expected to use, checked before building
+  # rather than pinned in the build files -- nothing in the tree names an SDK,
+  # so a local build keeps using whatever the machine has.
+  WINDOWS_SDK: 10.0.26100.0
+
 jobs:
   build:
     # Pinned rather than windows-latest, which has moved to 2025 and will move
@@ -76,6 +82,31 @@ jobs:
         run: |
           where gclient || exit /b 1
           python --version || exit /b 1
+
+      # Nothing in the tree names an SDK, so GYP picks one: it lists
+      # Windows Kits\10\Include, sorts the names in reverse and takes the first
+      # -- the newest installed, by string order. This asserts that what it
+      # will pick is WINDOWS_SDK above, which is the only way to pin the SDK
+      # from here without putting a version into the build files.
+      #
+      # Up front, because the alternative is finding out after a long build
+      # that it used something else. A failure here means the runner image
+      # changed its SDKs, which is outside this repository's control: read the
+      # list it prints and update WINDOWS_SDK.
+      - name: Check which Windows SDK the build will use
+        shell: cmd
+        run: |
+          set "KITS=%ProgramFiles(x86)%\Windows Kits\10\Include"
+          echo Installed SDKs:
+          dir /b /o-n "%KITS%" || exit /b 1
+          set "NEWEST="
+          for /f "delims=" %%v in ('dir /b /o-n "%KITS%"') do if not defined NEWEST set "NEWEST=%%v"
+          echo.
+          echo GYP will pick %NEWEST%, expecting %WINDOWS_SDK%
+          if /i "%NEWEST%"=="%WINDOWS_SDK%" exit /b 0
+          echo ERROR: the newest installed SDK is not the expected one. Update
+          echo        WINDOWS_SDK in this workflow to one of the above.
+          exit /b 1
 
       # The whole build, exactly as documented: sync, apply patches/, generate,
       # then Release for x86 and x64. winwrap is on by default here, so these
