@@ -18,14 +18,22 @@
 #      likely to rot without anyone touching this repository, since every
 #      revision is pinned in someone else's infrastructure.
 #   2. The tree builds with plain VS2022 against the current Windows SDK.
-#   3. Sawbuck.exe actually routes through winwrap and claims a subsystem
-#      version XP will load. This is the check that cannot be skipped: linking
+#   3. No function winwrap covers is bound to a system DLL, and the subsystem
+#      floor is low enough for XP. Worth a step of its own because linking
 #      winwrap and using it are different things, and when it goes wrong
-#      nothing says so -- the binary links, it runs on the runner, and it
-#      fails at load on the one OS nobody here is testing on.
+#      nothing says so: the binary links, it runs on the runner, and it fails
+#      at load on the one OS nobody here is testing on.
+#
+#      Note what that does *not* prove. check_imports.py reads the covered
+#      list out of winwrap's own sources and checks only those names, so an
+#      import of some post-XP function winwrap has no shim for has nothing to
+#      compare against and passes silently. A green step here means "winwrap
+#      won the link", not "this binary has no post-XP imports". Reach for
+#      --show-all, which lists every import and marks the covered ones, when
+#      a binary that passes this still will not start.
 #   4. Both installers exist and are uploaded.
 
-name: Build with GYP
+name: Build Sawbuck-ng
 
 on:
   workflow_dispatch:
@@ -41,14 +49,16 @@ env:
 
 jobs:
   build:
+    name: GYP Build
     # Pinned rather than windows-latest, which has moved to 2025 and will move
     # again. Visual Studio 2022 is what this tree is known to build with, and
     # what build.bat falls back to naming.
     runs-on: windows-2022
-    timeout-minutes: 150
+    timeout-minutes: 120
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Record the revision
         id: rev
@@ -95,7 +105,7 @@ jobs:
       # SDK sitting right beside it. Predicting that from a shell means
       # reimplementing it, and a reimplementation can be wrong in ways that
       # look right. The build is asked what it actually used instead, below.
-      - name: Show the installed Windows SDKs
+      - name: Show installed Windows SDKs
         shell: cmd
         run: |
           set "KITS=%ProgramFiles(x86)%\Windows Kits\10\Include"
@@ -113,7 +123,7 @@ jobs:
       # are the XP-capable binaries.
       #
       # No --jobs: the runner has few enough cores that bare /m is right.
-      - name: Build
+      - name: Build (x86 and x64)
         shell: cmd
         run: build.bat
 
@@ -150,15 +160,20 @@ jobs:
 
       # Step 3. The subsystem floor differs by architecture: 5.01 is XP on x86,
       # and 64-bit Windows begins at 5.02, which is as low as the linker goes
-      # for that machine. check_imports.py reads the covered-function list out
-      # of winwrap's own sources, so it cannot disagree with the library that
-      # was linked.
-      - name: Verify the x86 build runs on XP
+      # for that machine.
+      #
+      # check_imports.py reads the covered-function list out of winwrap's own
+      # sources, so it cannot disagree with the library that was linked -- and
+      # equally, cannot see past it. These steps are named for what they check
+      # rather than for what anyone wants to conclude: a pass says winwrap won
+      # the link and the header claims a version XP will accept, which is
+      # necessary for running there and not sufficient. See the note at the top.
+      - name: Check x86 imports and subsystem floor
         run: |
           python third_party/winwrap/tools/check_imports.py --min-os 5.01 `
             out/Release_x86/Sawbuck.exe
 
-      - name: Verify the x64 build runs on XP x64
+      - name: Check x64 imports and subsystem floor
         run: |
           python third_party/winwrap/tools/check_imports.py --min-os 5.02 `
             out/Release_x64/Sawbuck.exe
@@ -176,7 +191,8 @@ jobs:
           copy /Y out\Release_x64\Sawbuck_x64.msi installers\ || exit /b 1
           dir /b installers
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: Sawbuck-${{ steps.rev.outputs.short }}
           path: installers/*.msi

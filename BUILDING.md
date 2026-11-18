@@ -313,7 +313,18 @@ findstr /i "Fls InitializeCriticalSectionEx SRWLock ConditionVariable GetTickCou
 ```
 
 A function named by either is one that still needs a winwrap shim, or a sign
-that winwrap is not winning the link. The symbol and debugging DLLs follow
+that winwrap is not winning the link.
+
+**What a clean result does not mean.** `check_imports.py` reads the list of
+covered functions out of winwrap's sources and checks only those, so it cannot
+see an import of some post-XP function winwrap has no shim for — there is
+nothing to compare it against. "All clear" says winwrap won the link and the
+subsystem floor is right, which is necessary to run on XP and not sufficient.
+If a binary passes this and still will not start there, `--show-all` lists
+every import and marks the covered ones; the uncovered post-XP name will be in
+that list.
+
+The symbol and debugging DLLs follow
 automatically: `third_party/debugging_tools` defaults to its `xp` tier
 (dbghelp 6.12.2.633), and `copy_dlls` places the pair matching the
 configuration beside the executable.
