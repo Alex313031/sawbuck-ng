@@ -21,18 +21,24 @@ which can then be resolved and displayed in Sawbuck using a [packaged `dbghelp.d
 
 ## Supported Windows versions
 
-Vista, 7, 8, 8.1, 10 and 11 out of the box, 32-bit and 64-bit.
+**XP, Vista, 7, 8, 8.1, 10 and 11, 32-bit and 64-bit — all from one binary.**
 
-**Windows XP** is supported by a build that opts in, via
-[winwrap](https://github.com/Alex313031/winwrap) and a lowered subsystem
-version — see [BUILDING.md](./BUILDING.md#windows-xp). XP last worked in
-pre-0.6 builds from early 2010, before the project's first tagged release, so
-no published Sawbuck binary has run on it since. This one does, and without
-pinning an old toolset: it is built against the current Windows SDK with
-Visual Studio 2022, and one binary covers XP through 11.
+XP support is what `build.bat` produces by default rather than a separate
+build, and comes from [winwrap](https://github.com/Alex313031/winwrap) plus a
+lowered subsystem version &ndash; see [BUILDING.md](./BUILDING.md#windows-xp)
+for how it works, what it costs and how to build without it. Nothing is given
+up on a modern Windows: each of winwrap's functions asks the running OS for the
+real one first and falls back only where there is none, so Windows 7 and later
+run the system's own code throughout.
+
+XP last worked in pre-0.6 builds from early 2010, before the project's first
+tagged release, so no published Sawbuck binary has run on it since. This one
+does, and without pinning an old toolset: it is built against the current
+Windows SDK with Visual Studio 2022.
 
 ## Download
 Download a pre-built .msi installer from [Releases](https://github.com/Alex313031/sawbuck-ng/releases).
+The XP builds come as a .zip and are suffixed with "_xp".
 
 ## Usage
 For how to use Sawbuck or integrate your own app with Sawbuck, see [USAGE.md](./sawbuck/USAGE.md).

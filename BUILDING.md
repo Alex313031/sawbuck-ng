@@ -7,8 +7,9 @@ Windows SDK and ETW.
 ### Requirements
 
  - **Windows 10 or 11.** Building on the OS you intend to run on is not
-   required. Sawbuck itself runs on Vista and newer, or on XP as well with the
-   opt-in described under [Windows XP](#windows-xp) below.
+   required, and there is nothing to choose: the default build runs on XP
+   through 11 from one binary. See [Windows XP](#windows-xp) for how, and for
+   how to build without that.
  - **Visual Studio 2022** (Community is fine), with two pieces installed:
    - the **Desktop development with C++** workload, and
    - the **C++ ATL for latest v143 build tools** individual component.
@@ -45,24 +46,37 @@ That is the whole process. `build.bat` finds Visual Studio with `vswhere` (so it
 works from a plain `cmd` prompt, not only a Developer Command Prompt), installs
 the sample `gclient` solution file one directory above the repository root,
 syncs the dependencies, applies `patches/` to them, generates
-`sawbuck\sawbuck.sln`, and then builds all four flavours.
+`sawbuck\sawbuck.sln`, and then builds **Release for x86 and x64**.
+
+Release only, because that is what gets shipped and what anyone reaching for
+the script wants; a Debug build doubles the time for output most runs never
+open. Add `--debug` for all four.
 
 Useful options:
 
 | Option | Effect |
 |---|---|
+| `build.bat --debug` | Build the Debug flavours as well, for all four in total. |
 | `build.bat --no-sync` | Skip the `gclient` steps and just rebuild. Fails if the solution has not been generated yet. |
+| `build.bat --no-winwrap` | Generate without winwrap, giving up [Windows XP](#windows-xp) support. Needs generation, so it does nothing with `--no-sync`. |
 | `build.bat --jobs N` | Pass `/m:N` to MSBuild instead of bare `/m`, which uses every core. |
 | `build.bat --help` | Show usage. |
 
 Output lands in:
 
 ```
-out\Debug_x86\     out\Release_x86\
-out\Debug_x64\     out\Release_x64\
+out\Release_x86\     Sawbuck.exe   Sawbuck_x86.msi
+out\Release_x64\     Sawbuck.exe   Sawbuck_x64.msi
+out\Debug_x86\       --debug only
+out\Debug_x64\       --debug only
 ```
 
-with `Sawbuck.exe` and `Sawbuck.msi` in each.
+The installers carry their architecture so the two cannot collide once
+collected in one place. That rename is `build.bat`'s doing, not the build's:
+one generated project holds all four configurations, so nothing GYP
+substitutes into the WiX command line can differ between them, and MSBuild has
+no macro that spells the architecture as `x86` — `$(Platform)` says `Win32`.
+Driving `msbuild` yourself therefore produces a plain `Sawbuck.msi`.
 
 #### Doing it by hand
 
@@ -74,12 +88,17 @@ If you would rather drive the steps yourself:
 ::    directory, so it belongs in the parent, not here.
 copy gclient ..\.gclient
 
-:: 2. Sync. The hooks that run afterwards apply patches/ to the synced
+:: 2. Ask for Windows XP support, which build.bat would have done for you.
+::    GYP reads this itself, so it reaches the generation that the sync's
+::    hooks perform. Leave it out for a Vista-and-newer build.
+set GYP_DEFINES=sawbuck_use_winwrap=1
+
+:: 3. Sync. The hooks that run afterwards apply patches/ to the synced
 ::    dependencies and then generate the solution.
 gclient sync --force --reset --delete_unversioned_trees
 
-:: 3. Build one flavour.
-msbuild sawbuck\sawbuck.sln /m /p:Configuration=Debug /p:Platform=Win32
+:: 4. Build one flavour.
+msbuild sawbuck\sawbuck.sln /m /p:Configuration=Release /p:Platform=Win32
 ```
 
 `--reset` reverts the patches that `patches/` applies to `build/common.gypi`;
@@ -89,13 +108,15 @@ finished, so the ordering works out. Re-running them is harmless.
 To regenerate the solution without syncing:
 
 ```bat
-python3 tools\gyp_sawbuck.py
+python3 tools\gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
 ```
 
 GYP cannot reliably detect Visual Studio 2017 or newer on its own — its probe
 reads a registry key those versions no longer write — so set
 `GYP_MSVS_VERSION=2022` if generation complains. `build.bat` does this for you
-from `vswhere`.
+from `vswhere`, along with the `sawbuck_use_winwrap=1` above, which is why that
+has to be named here: without it the solution loses Windows XP support
+silently. See [Generating by hand](#generating-by-hand).
 
 #### Tests
 
@@ -104,18 +125,24 @@ unit tests as a build step, so a failing test fails the build. To build without
 running them:
 
 ```bat
-msbuild sawbuck\sawbuck.sln /t:build_all /p:Configuration=Debug /p:Platform=Win32
+msbuild sawbuck\sawbuck.sln /t:build_all /p:Configuration=Release /p:Platform=Win32
 ```
 
 The tests can also be run directly — each is a plain GoogleTest executable in
-the output directory:
+the output directory. `Release_x86` below because that is what a default
+`build.bat` produces; substitute `Debug_x86` if you built with `--debug`:
 
 ```bat
-out\Debug_x86\common_unittests.exe
-out\Debug_x86\log_lib_unittests.exe
-out\Debug_x86\sym_util_unittests.exe
-out\Debug_x86\viewer_unittests.exe
+out\Release_x86\common_unittests.exe
+out\Release_x86\log_lib_unittests.exe
+out\Release_x86\sym_util_unittests.exe
+out\Release_x86\viewer_unittests.exe
 ```
+
+`sawbuck\run_all_tests.bat` runs them for every flavour, and builds each one
+first. Worth knowing after a default `build.bat`: the Debug configurations will
+not exist, so two of its four flavours build the tree from scratch before they
+can run. `--config Release` keeps it to what you already built.
 
 Installing [Application Verifier](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/application-verifier)
 is optional. `run_unittests.py` uses it when present and prints a notice when
@@ -123,15 +150,18 @@ not.
 
 ### Windows XP
 
-The default build needs Vista or newer. XP is an opt-in, because the way it
-works is not free on a current Windows:
+**Nothing to do: `build.bat` turns XP support on.** It produces a binary that
+runs on XP through 11, and there is no separate XP build to make.
 
-```bat
-python3 tools\gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
-build.bat --no-sync
-```
+The switch is `sawbuck_use_winwrap`, and it lives in two places worth keeping
+straight. `sawbuck/sawbuck.gypi` declares it `0`, matching how upstream winwrap
+declares `use_winwrap`; `build.bat` exports
+`GYP_DEFINES=sawbuck_use_winwrap=1`, which GYP reads by itself, so generation
+inside the `gclient` hook picks it up. **Generating any other way therefore
+leaves it off** — see [Generating by hand](#generating-by-hand) below, because
+nothing warns you.
 
-That one flag does two things, which only work together:
+Set either way, it does two things that only work together:
 
  - Links [winwrap](https://github.com/Alex313031/winwrap), which supplies the
    Win32 functions XP does not export. A statically imported symbol the OS
@@ -150,37 +180,113 @@ current SDK; winwrap lowers it to `0x0501` for its own sources only, as a
 guardrail so it cannot accidentally use something newer than the OS it has to
 run on.
 
-#### Additional requirement
-
-Building with this flag needs the **C++ Clang Compiler for Windows** Visual
-Studio component, which is not installed by default. The winwrap target alone
-is compiled with clang-cl — its redirect table names symbols with Clang asm
-labels, and MSVC has no equivalent. Everything else still builds with MSVC.
-Check for it with:
+#### Building without it
 
 ```bat
-"%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\bin\clang-cl.exe" --version
+build.bat --no-winwrap
 ```
 
-#### Why it is off by default
+The result needs Vista or newer. Worth doing to isolate a fault — if something
+misbehaves and winwrap is a suspect, this is the comparison — and it is also
+the configuration upstream Sawbuck shipped.
 
-winwrap's redirects capture *every* call in the binary, so a build that will
-only ever run on a current Windows would get winwrap's own emulation — a
-`CRITICAL_SECTION` in place of a real `SRWLOCK`, and so on — for no benefit.
-Upstream's `winwrap.gni` declares `use_winwrap = false` for the same reason.
+`--no-winwrap` works by appending `sawbuck_use_winwrap=0`, and GYP keeps the
+last setting of a name, so it overrides a `sawbuck_use_winwrap=1` you already
+had in `GYP_DEFINES` rather than losing to it. It only reaches the build
+through generation, so it does nothing alongside `--no-sync`; the script says so
+rather than ignoring it.
+
+#### Generating by hand
+
+Generation normally happens inside the `gclient` hook, where `build.bat`'s
+`GYP_DEFINES` reaches it. Drive the generator yourself and there is no such
+environment, so **you get a solution without XP support and nothing says so.**
+Pass it explicitly:
+
+```bat
+python3 tools\gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
+```
+
+or set the variable for the shell, which also covers a bare `gclient runhooks`:
+
+```bat
+set GYP_DEFINES=sawbuck_use_winwrap=1
+```
+
+The reason this is worth a heading of its own: the resulting binary builds and
+runs perfectly on the machine that built it. It fails at load on XP, which is
+the one place nobody is looking. `check_imports.py` under
+[Checking the result](#checking-the-result) is what catches it in a second.
+
+#### Additional requirements
+
+None, as of winwrap 0.3.4. Nothing extra has to be installed: winwrap builds
+with plain MSVC, from the same C++ workload as the rest of the tree. Earlier
+revisions needed the **C++ Clang Compiler for Windows** component, because
+winwrap's redirect table names symbols with Clang asm labels and MSVC has no
+equivalent; it now assembles that table with MASM instead, which ships with
+Visual Studio.
+
+What it does need is `patches/06-gyp-next-masm-settings.patch`, and the
+`gclient sync` hook applies that for you. It is noted here only because the
+failure is misleading if the patch is ever missed: gyp-next's MASM settings
+table does not list `PreprocessorDefinitions`, and `ConvertToMSBuildSettings`
+drops any setting its table does not know after printing a warning. The symptom
+is four `unrecognized setting MASM/PreprocessorDefinitions` warnings at
+generation time, then `LNK2001` on `_winwrap_static_redirects` at link, because
+the define selects which of winwrap's two `.asm` files has a body.
+
+#### What it costs
+
+Little, but not nothing, and worth knowing before assuming the default suits
+every purpose:
+
+ - **A cached pointer load and a jump** on every call winwrap covers. Nothing
+   is replaced on a modern Windows: each shim asks the running OS for the real
+   function first and falls back only where there is none, so Windows 7 and
+   later run the system's own code throughout.
+ - **On Vista, the twelve `SRWLOCK` and `CONDITION_VARIABLE` functions become
+   winwrap's.** They resolve as a group or not at all — mixing them is memory
+   corruption rather than a slower lock, since each implementation reads that
+   one pointer-sized word differently — and the group is only complete from
+   Windows 7, because Vista exports no `TryAcquireSRWLock*` and has no
+   `RtlTryAcquireSRWLock*` under it either. winwrap's is a real reader/writer
+   lock with concurrent readers and writer preference, not a
+   `CRITICAL_SECTION` wearing the name, but it is not the kernel's, so
+   contended performance differs.
+ - **A few KB**, from the redirect table and the shims the `/INCLUDE:` anchor
+   pulls in behind it.
+
+Upstream's `winwrap.gni` declares `use_winwrap = false`, which is the opposite
+default and not a disagreement: that one governs Chromium and Electron, where
+the question is whether to apply the redirects across several hundred binaries.
+This governs one small log viewer whose whole purpose is reading logs off
+whatever machine produced them.
 
 #### Checking the result
 
-The quickest verification does not need an XP machine. Nothing Vista-or-newer
-should remain in the import table:
+The quickest verification does not need an XP machine, and is worth doing every
+time: linking winwrap and *using* it are different things, and when the
+difference goes wrong nothing says so — the binary links, it runs here, and it
+fails at load on XP. winwrap ships the check:
+
+```bat
+python3 third_party\winwrap\tools\check_imports.py --min-os 5.01 ^
+    out\Release_x86\Sawbuck.exe
+```
+
+It reads the import table and the subsystem version out of the PE and reports on
+both halves of the recipe. Use `--min-os 5.02` for x64. The covered-function
+list comes from winwrap's own sources, so it cannot fall behind the library the
+way a hand-written `findstr` pattern does:
 
 ```bat
 dumpbin /imports out\Release_x86\Sawbuck.exe > imports.txt
 findstr /i "Fls InitializeCriticalSectionEx SRWLock ConditionVariable GetTickCount64 IsThreadAFiber LCMapStringEx GetLocaleInfoEx CompareStringEx EventWriteTransfer" imports.txt
 ```
 
-Any hit there is a function that still needs a winwrap shim, or a sign that
-winwrap is not winning the link. The symbol and debugging DLLs follow
+A function named by either is one that still needs a winwrap shim, or a sign
+that winwrap is not winning the link. The symbol and debugging DLLs follow
 automatically: `third_party/debugging_tools` defaults to its `xp` tier
 (dbghelp 6.12.2.633), and `copy_dlls` places the pair matching the
 configuration beside the executable.
