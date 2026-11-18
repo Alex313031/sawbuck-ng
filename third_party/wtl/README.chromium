@@ -1,42 +1,44 @@
 Name: wtl
-URL: http://www.microsoft.com/downloads/details.aspx?FamilyID=e5ba5ba4-6e6b-462a-b24c-61115e846f0c
-Version: 8.0
-License: Microsoft Permissive License
+URL: https://sourceforge.net/projects/wtl/
+Version: 9.1 (build 5321)
+License: Microsoft Public License (Ms-PL)
 License File: Ms-PL.txt
 Security Critical: yes
 
-With min and max replaced respectively with __min and __max. See below for an explanation.
+Local Modifications:
+None. The headers are byte-for-byte upstream apart from line endings, which
+are LF here to match .gitattributes.
 
----
+That is worth recording, because the WTL 8.0 copy this replaced carried five
+sets of changes and every one of them has since landed upstream:
 
-These headers are almost the equivalent of WTL 8.0 from http://sourceforge.net/projects/wtl/
-with patch #1871358 applied.
-http://sourceforge.net/tracker/index.php?func=detail&aid=1871358&group_id=109071&atid=652374
+  * The licence header. WTL 8.0 shipped under CPL 1.0 and the vendored copy
+    had the Ms-PL header pasted over it; 9.1 is Ms-PL upstream.
 
-"Fixes support for building with NOMINMAX defined.
-When defining NOMINMAX before including windows.h, min and max aren't
-defined. __min and __max are always defined though. So use them instead.
+  * min and max replaced with __min and __max, which was patch #1871358 on
+    SourceForge: with NOMINMAX defined before windows.h, min and max do not
+    exist, while __min and __max always do. WTL 9.1 uses the underscored forms
+    throughout and has no bare min( or max( call left.
 
-This patch simply consist of a search of replace for both term."
+  * C4302, 'type cast': truncation from LPCTSTR to WORD, in atldlgs.h and
+    atlmisc.h. _U_STRINGorID::m_lpstr holds either a string or an
+    INTRESOURCE -- a small integer in a pointer -- and these sites want the
+    integer; casting a pointer straight to WORD is ill-formed on Win64. The
+    local fix was (WORD)(ULONG_PTR); 9.1 uses LOWORD(), which is the same
+    thing in the spelling the SDK uses.
 
----
+  * C4706, assignment used as a condition, in atlgdi.h's AtlGetDibBitmap. The
+    local fix parenthesised the assignment. 9.1 lifts it out of the condition
+    altogether, and while it was there also bounded the memcpy that follows --
+    so upstream fixed more than the warning.
 
-Cherry pick of http://sourceforge.net/tracker/index.php?func=detail&aid=1871358&group_id=109071&atid=652374
+  * An ATL11 guard in atlapp.h, so the DLL version helpers are declared when
+    _ATL_VER >= 0x0B00, which modern ATL removed from atlbase.h. This one was
+    never a local invention: it is 9.1's text verbatim, comment included, and
+    had been back-ported to keep WTL 8.0 building with Visual Studio 2022.
 
----
-
-Local: warnings MSVC has started emitting since WTL 8.0 was published, fixed
-here rather than suppressed, because suppressing them would also hide the same
-mistakes in Sawbuck's own code. All are spelling fixes with no behaviour
-change; WTL 10 carries equivalent ones upstream.
-
-  atlmisc.h, atldlgs.h -- C4302, 'type cast': truncation from LPCTSTR to WORD.
-    _U_STRINGorID::m_lpstr holds either a string or an INTRESOURCE, i.e. a
-    small integer in a pointer, and these sites want the integer. Casting a
-    pointer straight to WORD is ill-formed on Win64; (WORD)(ULONG_PTR) is the
-    cast the Windows SDK itself uses. Every site is already guarded by
-    IS_INTRESOURCE or by an ATLASSERT on the ID range.
-
-  atlgdi.h -- C4706, assignment used as a condition. AtlGetDibBitmap tests
-    the result of CreateDIBSection inline; parenthesised and compared against
-    NULL, which is what the warning asks for.
+Two headers are new in 9.1 and were not in the 8.0 set: atldwm.h (Desktop
+Window Manager) and atlribbon.h (Ribbon UI). Nothing here includes them. They
+are kept so this is the complete upstream Include directory rather than a
+subset nobody chose deliberately -- a missing header is a confusing failure,
+and an unused one costs nothing.

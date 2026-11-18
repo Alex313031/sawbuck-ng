@@ -1,10 +1,10 @@
-// Windows Template Library - WTL version 8.0
-// Copyright (C) Microsoft Corporation. All rights reserved.
+// Windows Template Library - WTL version 9.10
+// Copyright (C) Microsoft Corporation, WTL Team. All rights reserved.
 //
 // This file is a part of the Windows Template Library.
 // The use and distribution terms for this software are covered by the
-// Microsoft Permissive License (Ms-PL) which can be found in the file
-// Ms-PL.txt at the root of this distribution.
+// Microsoft Public License (http://opensource.org/licenses/MS-PL)
+// which can be found in the file MS-PL.txt at the root folder.
 
 #ifndef __ATLRES_H__
 #define __ATLRES_H__
@@ -147,6 +147,9 @@
 #define ID_EDIT_SELECT_ALL              0xE12A
 #define ID_EDIT_UNDO                    0xE12B
 #define ID_EDIT_REDO                    0xE12C
+#define ID_EDIT_DELETE                  ID_EDIT_CLEAR
+#define ID_EDIT_FIND_NEXT               ID_EDIT_REPEAT
+#define ID_EDIT_FIND_PREVIOUS           0xE12D
 
 // Window commands
 #define ID_WINDOW_NEW                   0xE130
@@ -181,6 +184,8 @@
 #define ID_NEXT_PANE                    0xE150
 #define ID_PREV_PANE                    0xE151
 #define ID_PANE_CLOSE                   0xE152
+#define ID_PANE_NEXT                    ID_NEXT_PANE
+#define ID_PANE_PREVIOUS                ID_PREV_PANE
 
 // Format
 #define ID_FORMAT_FONT                  0xE160
@@ -214,6 +219,7 @@
 #define ID_VIEW_TOOLBAR                 0xE800
 #define ID_VIEW_STATUS_BAR              0xE801
 #define ID_VIEW_REFRESH                 0xE803
+#define ID_VIEW_RIBBON                  0xE804
 
 ///////////////////////////////////////////////////////////////////////////////
 // Standard control IDs
