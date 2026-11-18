@@ -232,13 +232,26 @@ deps = {
   # to 0x0501 for its own sources only, and Sawbuck keeps building against the
   # current SDK and links /SUBSYSTEM:5.01.
   #
-  # Nothing builds against it yet. winwrap is GN-only -- BUILD.gn plus
-  # winwrap.gni, no .gyp -- so it needs a GYP build file written for it before
-  # it can join this build. Two things to know when that happens: it must be
-  # linked ahead of every other library, including the default libs, or call
-  # sites bind straight to the system DLL instead; and its own sources want
-  # /std:c++17, which is appended rather than replacing our /std:c++14 since
-  # the last /std: on the command line wins.
+  # Needed by an ordinary build rather than an optional extra: build.bat
+  # exports GYP_DEFINES=sawbuck_use_winwrap=1, so the scripted build links it
+  # even though sawbuck/sawbuck.gypi declares the variable as 0. Hence not
+  # commented out here the way the genuinely unused entries are -- a sync
+  # without this produces a tree that cannot generate the default build. See
+  # BUILDING.md for what it costs and how to build without it.
+  #
+  # winwrap ships its own winwrap.gyp alongside BUILD.gn, so this needs no
+  # build file written here -- deliberately, since gclient sync
+  # --delete_unversioned_trees would remove one placed in the checkout.
+  # sawbuck/viewer/viewer.gyp names the target and carries the two settings the
+  # consumer owns: winwrap has to come ahead of the kernel32.lib that
+  # common.gypi names explicitly, or call sites bind straight to the system
+  # DLL, and /SUBSYSTEM has to come down. Its own sources want /std:c++17,
+  # which is appended rather than replacing our /std:c++14 since the last
+  # /std: on the command line wins.
+  #
+  # winwrap.gyp needs patches/06-gyp-next-masm-settings.patch, which the hook
+  # applies to tools/gyp-next below; without it the MASM define that selects
+  # the architecture is dropped at generation time.
   #
   # The path matters. BUILD.gn imports //third_party/winwrap/winwrap.gni by
   # absolute label, and README.chromium says to read the revision from the

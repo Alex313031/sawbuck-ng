@@ -120,6 +120,21 @@
             # directory that already holds a lowercase sawbuck.msi from an
             # earlier build will be written through rather than renamed, so
             # delete it once if the casing looks unchanged.
+            #
+            # No architecture in the name, and not for want of trying: one
+            # generated project holds all four configurations, so nothing GYP
+            # substitutes here can differ between them -- the same constraint
+            # that makes candle take -dMsiPlatform=$(Platform) above. MSBuild
+            # has no macro spelling the architecture as x86 either ($(Platform)
+            # is Win32), and the one GYP mechanism that would emit a custom
+            # per-configuration property, 'msbuild_settings', makes GYP ignore
+            # msvs_settings for every configuration inheriting it, which would
+            # throw away common.gypi's whole compiler and linker setup.
+            #
+            # So build.bat renames the result to Sawbuck_x86.msi or
+            # Sawbuck_x64.msi after each flavour. Driving msbuild directly
+            # leaves the name as it is here. Moving it means this action runs
+            # again on the next build, since its declared output is gone.
             '<(PRODUCT_DIR)/Sawbuck.msi',
           ],
           'action': [

@@ -47,20 +47,51 @@
 
     # Link winwrap and target Windows XP.
     #
-    # Off by default, which is deliberate and is also how upstream declares
-    # use_winwrap in winwrap.gni: the redirects capture every call in the
-    # binary, so a build that will only ever run on a current Windows would
-    # get winwrap's own emulation -- a CRITICAL_SECTION in place of a real
-    # SRWLOCK, and so on -- for no benefit. Turn it on for a build that
-    # actually has to run on XP:
+    # The declared default is off, matching how upstream declares use_winwrap
+    # in winwrap.gni -- but build.bat turns it on, so the scripted build, which
+    # is the one that produces releases, covers XP through 11 from a single
+    # binary. It does that by exporting
     #
-    #   python3 tools/gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
+    #   GYP_DEFINES=sawbuck_use_winwrap=1
+    #
+    # which GYP reads by itself, and which therefore reaches the generation
+    # that happens inside the gclient hook rather than on a command line
+    # build.bat controls. Run build.bat --no-winwrap to leave it off.
+    #
+    # Worth knowing, because it is the one sharp edge of putting the default in
+    # the script: generating any other way does not get it. A bare
+    #
+    #   python3 tools/gyp_sawbuck.py
+    #
+    # or a plain `gclient runhooks` regenerates the solution with winwrap off
+    # and says nothing about it, and a following `build.bat --no-sync` then
+    # produces a binary that will not start on XP. Set the same variable, or
+    # pass -D sawbuck_use_winwrap=1, when generating by hand.
     #
     # The same switch sets the linker's subsystem version, because the two
     # have to agree in both directions. Without winwrap, a binary claiming
     # 5.01 still dies on XP at load time on the first import the OS does not
     # export, before any of its own code runs; with winwrap but without 5.01,
     # the loader rejects it for the subsystem version instead.
+    #
+    # What it costs, which is little but not nothing:
+    #
+    #  - A cached pointer load and a jump on every call winwrap covers.
+    #    Nothing is replaced on a modern Windows: each shim asks the running
+    #    OS for the real function first and only falls back where there is
+    #    none, so Windows 7 and later run the system's own code throughout.
+    #
+    #  - On Vista specifically, the twelve SRWLOCK and CONDITION_VARIABLE
+    #    functions become winwrap's. They resolve as a group or not at all --
+    #    mixing them is memory corruption, since each implementation reads
+    #    that one pointer-sized word differently -- and the group is only
+    #    complete from Windows 7, because Vista has no TryAcquireSRWLock* in
+    #    kernel32 and no RtlTryAcquireSRWLock* under it. winwrap's is a real
+    #    reader/writer lock rather than a CRITICAL_SECTION wearing the name,
+    #    but it is not the kernel's, so contended performance differs.
+    #
+    #  - The subsystem version on every build, and the winwrap members pulled
+    #    in behind the /INCLUDE: anchor, which is a handful of KB.
     'sawbuck_use_winwrap%': 0,
 
     # NOTE: clang/host_clang are NOT set here. They have to be command-line

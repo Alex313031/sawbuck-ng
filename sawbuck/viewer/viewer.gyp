@@ -204,8 +204,11 @@
         },
       },
       'conditions': [
-        # Windows XP support, off unless asked for -- see sawbuck_use_winwrap
-        # in sawbuck/sawbuck.gypi for what it costs to leave on.
+        # Windows XP support. The variable defaults to 0 in
+        # sawbuck/sawbuck.gypi and build.bat sets it to 1, so the scripted
+        # build takes this branch and a hand generation does not unless asked
+        # -- see sawbuck/sawbuck.gypi for the whole arrangement and what it
+        # costs.
         ['sawbuck_use_winwrap!=0', {
           'dependencies': [
             '<(DEPTH)/third_party/winwrap/winwrap.gyp:winwrap',
