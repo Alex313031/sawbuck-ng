@@ -1,0 +1,125 @@
+# Builds Sawbuck using the normal GYP/MSVC flow -- the same build.bat anyone
+# would run locally, rather than a reimplementation of it in YAML. If this
+# passes and a local build does not, the difference is the machine.
+#
+# No separate XP build to make: build.bat links winwrap by default, so one
+# binary covers XP through 11, and the WiX 3 installer runs on XP as well
+# (InstallerVersion 200, and a launch condition of 5.01 rather than anything
+# newer). The artifacts are therefore just Sawbuck_x86.msi and Sawbuck_x64.msi.
+#
+# Manual only. There is no push or pull_request trigger on purpose: this syncs
+# Chromium's M49 base, ICU and the rest, then builds Release for two
+# architectures, which is tens of minutes of runner time for a tree that does
+# not change that often.
+#
+# What it proves, in order:
+#
+#   1. gclient sync works against the pinned DEPS -- which is the part most
+#      likely to rot without anyone touching this repository, since every
+#      revision is pinned in someone else's infrastructure.
+#   2. The tree builds with plain VS2022 against the current Windows SDK.
+#   3. Sawbuck.exe actually routes through winwrap and claims a subsystem
+#      version XP will load. This is the check that cannot be skipped: linking
+#      winwrap and using it are different things, and when it goes wrong
+#      nothing says so -- the binary links, it runs on the runner, and it
+#      fails at load on the one OS nobody here is testing on.
+#   4. Both installers exist and are uploaded.
+
+name: Build with GYP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Pinned rather than windows-latest, which has moved to 2025 and will move
+    # again. Visual Studio 2022 is what this tree is known to build with, and
+    # what build.bat falls back to naming.
+    runs-on: windows-2022
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record the revision
+        id: rev
+        shell: cmd
+        run: |
+          rem Redirection first, deliberately. `echo short=%%i>> file` breaks
+          rem when the hash ends in a digit: cmd reads the trailing digit as a
+          rem stream number, so `...a1>> file` redirects stream 1 and writes
+          rem "short=a".
+          for /f %%i in ('git rev-parse --short HEAD') do >>%GITHUB_OUTPUT% echo short=%%i
+
+      # gclient, which build.bat requires on PATH and which also supplies the
+      # python3 the DEPS hooks invoke. Appended rather than prepended so
+      # depot_tools' bundled interpreter does not shadow the runner's tools;
+      # gclient.bat calls its own python explicitly, so being later on PATH
+      # costs nothing.
+      #
+      # DEPOT_TOOLS_WIN_TOOLCHAIN=0 is not optional. Without it depot_tools
+      # tries to fetch Google's internal packaged toolchain, which is not
+      # available outside their network, and the failure is some way removed
+      # from the cause.
+      - name: Install depot_tools
+        shell: cmd
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "%RUNNER_TEMP%\depot_tools" || exit /b 1
+          >>%GITHUB_PATH% echo %RUNNER_TEMP%\depot_tools
+          >>%GITHUB_ENV% echo DEPOT_TOOLS_WIN_TOOLCHAIN=0
+
+      - name: Check the tools are visible
+        shell: cmd
+        run: |
+          where gclient || exit /b 1
+          python --version || exit /b 1
+
+      # The whole build, exactly as documented: sync, apply patches/, generate,
+      # then Release for x86 and x64. winwrap is on by default here, so these
+      # are the XP-capable binaries.
+      #
+      # No --jobs: the runner has few enough cores that bare /m is right.
+      - name: Build
+        shell: cmd
+        run: build.bat
+
+      - name: Show what was built
+        shell: cmd
+        run: dir /s /b out\Release_x86\*.exe out\Release_x86\*.msi out\Release_x64\*.exe out\Release_x64\*.msi
+
+      # Step 3. The subsystem floor differs by architecture: 5.01 is XP on x86,
+      # and 64-bit Windows begins at 5.02, which is as low as the linker goes
+      # for that machine. check_imports.py reads the covered-function list out
+      # of winwrap's own sources, so it cannot disagree with the library that
+      # was linked.
+      - name: Verify the x86 build runs on XP
+        run: |
+          python third_party/winwrap/tools/check_imports.py --min-os 5.01 `
+            out/Release_x86/Sawbuck.exe
+
+      - name: Verify the x64 build runs on XP x64
+        run: |
+          python third_party/winwrap/tools/check_imports.py --min-os 5.02 `
+            out/Release_x64/Sawbuck.exe
+
+      # Staged into one flat directory so the artifact holds the two installers
+      # side by side rather than nested under out\Release_<arch>\. Note that
+      # GitHub zips every artifact, so this downloads as a .zip containing two
+      # .msi files -- which is a property of the upload and not a return of the
+      # old per-architecture .zip packaging.
+      - name: Stage the installers
+        shell: cmd
+        run: |
+          mkdir installers || exit /b 1
+          copy /Y out\Release_x86\Sawbuck_x86.msi installers\ || exit /b 1
+          copy /Y out\Release_x64\Sawbuck_x64.msi installers\ || exit /b 1
+          dir /b installers
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sawbuck-${{ steps.rev.outputs.short }}
+          path: installers/*.msi
+          if-no-files-found: error
