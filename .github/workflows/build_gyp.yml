@@ -83,29 +83,29 @@ jobs:
           where gclient || exit /b 1
           python --version || exit /b 1
 
-      # Nothing in the tree names an SDK, so GYP picks one: it lists
-      # Windows Kits\10\Include, sorts the names in reverse and takes the first
-      # -- the newest installed, by string order. This asserts that what it
-      # will pick is WINDOWS_SDK above, which is the only way to pin the SDK
-      # from here without putting a version into the build files.
+      # What is available. Filtered to 10.*, because Include\ also holds a
+      # 'wdf' directory -- which is worth saying since it is what broke the
+      # first version of this step: it sorted the names descending to guess
+      # which one GYP would take, and 'wdf' sorts above every digit.
       #
-      # Up front, because the alternative is finding out after a long build
-      # that it used something else. A failure here means the runner image
-      # changed its SDKs, which is outside this repository's control: read the
-      # list it prints and update WINDOWS_SDK.
-      - name: Check which Windows SDK the build will use
+      # No guess here now. GYP does not simply take the newest: it reads
+      # ProductVersion from the SDK's registry key, keeps only the include
+      # directories whose names start with it, and takes the newest of those --
+      # so a registry entry naming an older product version wins over a newer
+      # SDK sitting right beside it. Predicting that from a shell means
+      # reimplementing it, and a reimplementation can be wrong in ways that
+      # look right. The build is asked what it actually used instead, below.
+      - name: Show the installed Windows SDKs
         shell: cmd
         run: |
           set "KITS=%ProgramFiles(x86)%\Windows Kits\10\Include"
           echo Installed SDKs:
-          dir /b /o-n "%KITS%" || exit /b 1
-          set "NEWEST="
-          for /f "delims=" %%v in ('dir /b /o-n "%KITS%"') do if not defined NEWEST set "NEWEST=%%v"
+          dir /b /o-n "%KITS%\10.*" || exit /b 1
           echo.
-          echo GYP will pick %NEWEST%, expecting %WINDOWS_SDK%
-          if /i "%NEWEST%"=="%WINDOWS_SDK%" exit /b 0
-          echo ERROR: the newest installed SDK is not the expected one. Update
-          echo        WINDOWS_SDK in this workflow to one of the above.
+          echo Expecting the build to use %WINDOWS_SDK%
+          if exist "%KITS%\%WINDOWS_SDK%\um\windows.h" exit /b 0
+          echo ERROR: Windows SDK %WINDOWS_SDK% is not installed on this runner.
+          echo        Update WINDOWS_SDK in this workflow to one of the above.
           exit /b 1
 
       # The whole build, exactly as documented: sync, apply patches/, generate,
@@ -116,6 +116,33 @@ jobs:
       - name: Build
         shell: cmd
         run: build.bat
+
+      # Which SDK the build used, asked of the build rather than predicted.
+      # GYP writes its choice into every generated project as
+      # WindowsTargetPlatformVersion, and MSBuild resolves the SDK and the ATL
+      # paths from that one property, so this is the answer and not a proxy for
+      # it.
+      #
+      # After the build rather than before, because generation happens inside
+      # build.bat's sync. That means a mismatch is found having already paid
+      # for the build -- the trade for not reimplementing GYP's registry-driven
+      # selection here and being subtly wrong about it instead.
+      - name: Check which Windows SDK the build used
+        shell: cmd
+        run: |
+          set "PROJ=sawbuck\viewer\sawbuck_exe.vcxproj"
+          if not exist "%PROJ%" (
+            echo ERROR: %PROJ% is missing, so the build did not generate.
+            exit /b 1
+          )
+          findstr /c:"WindowsTargetPlatformVersion" "%PROJ%"
+          findstr /c:"<WindowsTargetPlatformVersion>%WINDOWS_SDK%<" "%PROJ%" >nul && exit /b 0
+          echo.
+          echo ERROR: the build did not use %WINDOWS_SDK%; see the line above.
+          echo        GYP picks the SDK from the registry's ProductVersion, not
+          echo        from whichever is newest, so a runner image change can
+          echo        move it. Update WINDOWS_SDK in this workflow to match.
+          exit /b 1
 
       - name: Show what was built
         shell: cmd
