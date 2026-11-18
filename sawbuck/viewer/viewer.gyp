@@ -287,12 +287,14 @@
                   # /SUBSYSTEM:WINDOWS,5.01 -- SubSystem 2 is set above.
                   'MinimumRequiredVersion': '5.01',
                   'AdditionalOptions': [
-                    # Pulls static_redirects.obj in. x86 decorates the slot
-                    # with a leading underscore and the stdcall argument size,
-                    # so the name differs from x64 -- confirmed against
-                    # dumpbin /symbols on winwrap.lib, which reports exactly
-                    # this spelling.
-                    '/INCLUDE:__imp__GetTickCount64@0',
+                    # Pulls static_redirects.obj in. winwrap_static_redirects
+                    # is the anchor winwrap provides for exactly this, so the
+                    # dependency is on winwrap rather than on whichever shim
+                    # we happened to name -- it used to be
+                    # __imp__GetTickCount64@0, which worked but would have
+                    # broken with LNK2001 if that shim were ever dropped.
+                    # Ordinary decoration, so x86 takes a leading underscore.
+                    '/INCLUDE:_winwrap_static_redirects',
                   ],
                 },
               },
@@ -305,9 +307,8 @@
                   # as low as the linker goes for this machine.
                   'MinimumRequiredVersion': '5.02',
                   'AdditionalOptions': [
-                    # Same as x86, undecorated: no leading underscore and no
-                    # argument size, since x64 has one calling convention.
-                    '/INCLUDE:__imp_GetTickCount64',
+                    # Same anchor, undecorated: x64 has no leading underscore.
+                    '/INCLUDE:winwrap_static_redirects',
                   ],
                 },
               },
