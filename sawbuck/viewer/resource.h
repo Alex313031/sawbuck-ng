@@ -67,7 +67,18 @@
 #define ID_SET_TIME_ZERO                4007
 #define ID_RESET_BASE_TIME              4008
 #define ID_LOG_SYMBOLPATH               4009
-#define ID_EDIT_FIND_NEXT               4010
+// 4010 was ID_EDIT_FIND_NEXT, which now comes from WTL's atlres.h instead --
+// it joins ID_EDIT_FIND, ID_EDIT_COPY, ID_APP_ABOUT and the five other
+// standard command IDs this file already leaves to WTL. WTL 8.0 had no
+// ID_EDIT_FIND_NEXT, which is why there was a local one; 9.1 defines it as an
+// alias for ID_EDIT_REPEAT.
+//
+// Defining it here as well was not merely a redefinition warning. atlres.h
+// does not guard the name, and the two definitions won in different places:
+// viewer.rc includes resource.h at the top and atlres.h nine lines later, so
+// the menu item and the F3 accelerator compiled to WTL's 0xE128, while every
+// .cc saw atlres.h first and resource.h last and so used 4010. The command
+// would have been posted with an ID no handler claimed.
 #define ID_EDIT_AUTOSIZE_COLUMNS        4011
 #define ID_INCLUDE_COLUMN               4012
 #define ID_EXCLUDE_COLUMN               4013
