@@ -151,8 +151,21 @@ if defined GYP_MSVS_VERSION (
   set "GYP_MSVS_VERSION=%VS_YEAR%"
   echo [0/3] Visual Studio %VS_YEAR%, GYP_MSVS_VERSION set from vswhere.
 ) else (
-  echo [0/3] WARNING: could not determine the Visual Studio version. If
-  echo       generation fails, set GYP_MSVS_VERSION yourself, e.g. 2022.
+  REM Nothing in the environment and nothing from vswhere, so fall back rather
+  REM than leave it unset. GYP cannot detect VS2017 or newer on its own -- its
+  REM probe reads a registry key those versions no longer write -- so an unset
+  REM GYP_MSVS_VERSION means generation fails outright. 2022 is the only
+  REM version this tree is known to build with, so guessing it is strictly
+  REM better than guessing nothing.
+  REM
+  REM Loudly, though: MSBuild was found, so something is installed, and
+  REM vswhere not naming it means the guess may be wrong. If it is, that shows
+  REM up as a generation failure mentioning the toolset, and the fix is to set
+  REM GYP_MSVS_VERSION in the environment.
+  set "GYP_MSVS_VERSION=2022"
+  echo [0/3] WARNING: could not determine the Visual Studio version from
+  echo       vswhere, so GYP_MSVS_VERSION has been set to 2022. If that is
+  echo       wrong, set GYP_MSVS_VERSION yourself before running this.
 )
 
 if "%DO_SYNC%"=="0" (
