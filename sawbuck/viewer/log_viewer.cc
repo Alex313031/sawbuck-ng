@@ -28,7 +28,13 @@
 #include "sawbuck/viewer/preferences.h"
 
 LogViewer::LogViewer(CUpdateUIBase* update_ui)
-    : log_list_view_(update_ui),
+    // false is the splitter orientation: horizontal, so the log list sits
+    // above the stack trace. It used to be the second template argument on
+    // CSplitterWindowImpl; WTL 9.1 removed that parameter and takes the
+    // orientation here, storing it in CSplitterImpl::m_bVertical, where
+    // SetOrientation() can also change it later.
+    : Super(false),
+      log_list_view_(update_ui),
       stack_trace_list_view_(update_ui),
       log_view_(NULL),
       update_ui_(update_ui) {

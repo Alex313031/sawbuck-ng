@@ -37,9 +37,14 @@ class IProcessInfoService;
 
 // The log viewer window plays host to a listview, taking care of handling
 // its notification requests etc.
-class LogViewer : public CSplitterWindowImpl<LogViewer, false> {
+// Horizontal, which WTL 9.1 asks for at run time rather than as a template
+// argument: CSplitterWindowImpl lost its t_bVertical parameter, and the
+// constructor takes the orientation instead. The constructor passes false; see
+// log_viewer.cc. WTL's own CSplitterWindowT does the same with its template
+// parameter, so this is the supported shape and not a workaround.
+class LogViewer : public CSplitterWindowImpl<LogViewer> {
  public:
-  typedef CSplitterWindowImpl<LogViewer, false> Super;
+  typedef CSplitterWindowImpl<LogViewer> Super;
 
   static const UINT WM_NEW_MESSAGES = WM_USER + 109;
   BEGIN_MSG_MAP_EX(ViewerWindow)
