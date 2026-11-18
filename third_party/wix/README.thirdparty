@@ -1,6 +1,6 @@
-URL: http://wix.sourceforge.net/releases/3.0.5419.0/wix3-binaries.zip
-Version: 3.0.5419
-License: CPL
+URL: https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip
+Version: 3.11.2.4516
+License: MS-RL
 License File: LICENSE
 
 Description:
@@ -9,7 +9,41 @@ packages from XML source code. The toolset supports a command line environment
 that developers may integrate into their build processes to build MSI and MSM
 setup packages.
 
-This is the RTM version of WiX 3.0, version 3.0.5419.0.
+This is WiX 3.11.2, the last release of the 3.x line that does not require
+.NET Framework 4.
+
+Why not 3.14, which is the newest 3.x:
+  3.14's binaries are compiled against the v4.0.30319 runtime and its
+  candle.exe.config carries no fallback, so .NET Framework 4 becomes a build
+  prerequisite. 3.11.2 is compiled against v2.0.50727 and lists both v4.0 and
+  v2.0.50727 as supported runtimes, with useLegacyV2RuntimeActivationPolicy
+  set -- so it runs on .NET 2.0/3.5 and on 4.x alike, which is strictly more
+  compatible than either neighbour. There is no 3.12 or 3.13, so this is the
+  immediate predecessor rather than a compromise several versions back.
 
 Local Modifications:
-No modifications.
+Only the top level of the upstream zip is vendored. doc/ and sdk/ are not,
+which is what takes this from 100MB to 14MB -- less than half the 31MB the
+WiX 3.0.5419 copy occupied.
+
+  doc/  4.2MB of toolset documentation, not read by any build step.
+  sdk/  82MB, almost all of it sdk/vs2010 through sdk/vs2017: the Visual
+        Studio integration packages. Nothing here drives WiX from Visual
+        Studio; sawbuck/installer/installer.gyp shells out to candle.exe and
+        light.exe directly.
+
+The root level is kept whole rather than reduced to the files actually
+loaded. That is a rule a future upgrade can follow without re-deriving it,
+and it cannot silently omit a dependency the way a hand-picked list can.
+Everything the build touches is there: candle.exe and light.exe with their
+.config files, WixUIExtension.dll and WixUtilExtension.dll for the -ext
+arguments, darice.cub for the ICE validation the -sice: flags filter, wix.dll
+which both drivers load, and Microsoft.Deployment.WindowsInstaller.dll.
+
+Also not vendored: x86/burn.exe, the Burn bootstrapper, which only matters
+for building bundles. Sawbuck ships a plain MSI.
+
+Note on the licence:
+WiX 3.0.5419 was CPL and shipped a CPL.TXT; the project relicensed to the
+Microsoft Reciprocal License before 3.11, and copyright now sits with the
+.NET Foundation. The LICENSE file beside this one is upstream's LICENSE.TXT.
