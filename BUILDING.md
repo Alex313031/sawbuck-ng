@@ -7,7 +7,8 @@ Windows SDK and ETW.
 ### Requirements
 
  - **Windows 10 or 11.** Building on the OS you intend to run on is not
-   required; Sawbuck itself runs on Vista and newer.
+   required. Sawbuck itself runs on Vista and newer, or on XP as well with the
+   opt-in described under [Windows XP](#windows-xp) below.
  - **Visual Studio 2022** (Community is fine), with two pieces installed:
    - the **Desktop development with C++** workload, and
    - the **C++ ATL for latest v143 build tools** individual component.
@@ -119,3 +120,67 @@ out\Debug_x86\viewer_unittests.exe
 Installing [Application Verifier](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/application-verifier)
 is optional. `run_unittests.py` uses it when present and prints a notice when
 not.
+
+### Windows XP
+
+The default build needs Vista or newer. XP is an opt-in, because the way it
+works is not free on a current Windows:
+
+```bat
+python3 tools\gyp_sawbuck.py -- -D sawbuck_use_winwrap=1
+build.bat --no-sync
+```
+
+That one flag does two things, which only work together:
+
+ - Links [winwrap](https://github.com/Alex313031/winwrap), which supplies the
+   Win32 functions XP does not export. A statically imported symbol the OS
+   lacks is fatal at load, before any program code runs, so it cannot be
+   handled at the call site. winwrap captures the calls by defining the
+   `__imp_<name>` slots they load through, then asks the running Windows for
+   the real function first and only falls back to its own where there is
+   none — so the same binary uses the system's code on Windows 7 and the
+   emulation on XP.
+ - Sets the linker's minimum subsystem version: 5.01 on Win32 and 5.02 on x64,
+   which is as low as the linker goes for that machine. Without this the loader
+   rejects the binary outright, whatever its imports.
+
+Note that `_WIN32_WINNT` does **not** move. Sawbuck keeps building against the
+current SDK; winwrap lowers it to `0x0501` for its own sources only, as a
+guardrail so it cannot accidentally use something newer than the OS it has to
+run on.
+
+#### Additional requirement
+
+Building with this flag needs the **C++ Clang Compiler for Windows** Visual
+Studio component, which is not installed by default. The winwrap target alone
+is compiled with clang-cl — its redirect table names symbols with Clang asm
+labels, and MSVC has no equivalent. Everything else still builds with MSVC.
+Check for it with:
+
+```bat
+"%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\bin\clang-cl.exe" --version
+```
+
+#### Why it is off by default
+
+winwrap's redirects capture *every* call in the binary, so a build that will
+only ever run on a current Windows would get winwrap's own emulation — a
+`CRITICAL_SECTION` in place of a real `SRWLOCK`, and so on — for no benefit.
+Upstream's `winwrap.gni` declares `use_winwrap = false` for the same reason.
+
+#### Checking the result
+
+The quickest verification does not need an XP machine. Nothing Vista-or-newer
+should remain in the import table:
+
+```bat
+dumpbin /imports out\Release_x86\Sawbuck.exe > imports.txt
+findstr /i "Fls InitializeCriticalSectionEx SRWLock ConditionVariable GetTickCount64 IsThreadAFiber LCMapStringEx GetLocaleInfoEx CompareStringEx EventWriteTransfer" imports.txt
+```
+
+Any hit there is a function that still needs a winwrap shim, or a sign that
+winwrap is not winning the link. The symbol and debugging DLLs follow
+automatically: `third_party/debugging_tools` defaults to its `xp` tier
+(dbghelp 6.12.2.633), and `copy_dlls` places the pair matching the
+configuration beside the executable.

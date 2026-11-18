@@ -17,7 +17,19 @@ which can then be resolved and displayed in Sawbuck using a [packaged `dbghelp.d
  - Bug fixes across the board.
  - Updated dependencies to newer Chromium M49 revisions.
  - Building with current toolchains restored.
- - Legacy Windows support restored.
+ - Legacy Windows support restored, down to Windows XP.
+
+## Supported Windows versions
+
+Vista, 7, 8, 8.1, 10 and 11 out of the box, 32-bit and 64-bit.
+
+**Windows XP** is supported by a build that opts in, via
+[winwrap](https://github.com/Alex313031/winwrap) and a lowered subsystem
+version — see [BUILDING.md](./BUILDING.md#windows-xp). XP last worked in
+pre-0.6 builds from early 2010, before the project's first tagged release, so
+no published Sawbuck binary has run on it since. This one does, and without
+pinning an old toolset: it is built against the current Windows SDK with
+Visual Studio 2022, and one binary covers XP through 11.
 
 ## Download
 Download a pre-built .msi installer from [Releases](https://github.com/Alex313031/sawbuck-ng/releases).
