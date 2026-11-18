@@ -7,3 +7,4 @@
 03-build-no-posix-host-compiler-on-windows.patch
 04-build-reinstate-third-party-warn-as-error.patch
 05-base-event-write-transfer-redirector.patch
+06-gyp-next-masm-settings.patch

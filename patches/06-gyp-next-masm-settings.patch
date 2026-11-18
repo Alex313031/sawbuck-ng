@@ -1,0 +1,55 @@
+Let MASM settings through gyp-next's MSVS-to-MSBuild conversion.
+
+gyp-next's MASM tool table has exactly one entry:
+
+  _Same(_masm, "UseSafeExceptionHandlers", _boolean)  # /safeseh
+
+and ConvertToMSBuildSettings keeps only settings present in that table.
+Anything else takes the else branch, which prints
+
+  Warning: unrecognized setting MASM/PreprocessorDefinitions
+  while converting to MSBuild.
+
+and is then never added to the output dictionary. The warning is the only
+trace: generation succeeds, the project is written without the setting, and
+the build does whatever it does without it.
+
+That is not a harmless omission for an assembler. A .asm source cannot be
+selected per configuration -- one generated project holds every configuration
+at once -- so a library that needs different assembly per architecture has to
+list every variant and have each guard its own body on a define. Which is
+precisely what MASM/PreprocessorDefinitions is for, and precisely what cannot
+be delivered.
+
+third_party/winwrap is that case. Its redirect table exists twice, as
+src/static_redirects.cc for Clang and src/forwarders_{x86,x64}.asm for MSVC,
+and the MASM pair guards on WINWRAP_X86 / WINWRAP_X64. Without the define both
+files assemble to empty objects, which is not a build failure -- the library
+links, exports nothing, and silently does none of what it exists to do. Here
+it surfaced one step later, as LNK2001 on the anchor symbol a consumer names
+in /INCLUDE:, because that symbol sits inside the same guard.
+
+So this adds the three settings from masm.xml that the table is missing:
+PreprocessorDefinitions and IncludePaths, which are /D and /I and have no
+substitute, and AdditionalOptions, which ClCompile has for the same reason --
+it is the escape hatch that stops the next missing MASM flag needing another
+patch.
+
+Nothing is renamed or translated: all three have the same name in MSVS and
+MSBuild, so each is a _Same line, in the same shape and alphabetical position
+as the ClCompile entries at MSVSSettings.py:580 and :599.
+
+Worth upstreaming rather than carrying. It is additive, it matches the schema
+the comment above the table already points at, and the omission looks like
+nobody having needed MASM beyond /safeseh rather than a decision.
+
+--- a/tools/gyp-next/pylib/gyp/MSVSSettings.py
++++ b/tools/gyp-next/pylib/gyp/MSVSSettings.py
+@@ -1280,4 +1280,7 @@
+ # MSBuild MASM settings.
+ 
+ # Options that have the same name in MSVS and MSBuild.
++_Same(_masm, "AdditionalOptions", _string_list)
++_Same(_masm, "IncludePaths", _folder_list)  # /I
++_Same(_masm, "PreprocessorDefinitions", _string_list)  # /D
+ _Same(_masm, "UseSafeExceptionHandlers", _boolean)  # /safeseh
