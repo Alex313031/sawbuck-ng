@@ -37,8 +37,13 @@ does, and without pinning an old toolset: it is built against the current
 Windows SDK with Visual Studio 2022.
 
 ## Download
-Download a pre-built .msi installer from [Releases](https://github.com/Alex313031/sawbuck-ng/releases).
-The XP builds come as a .zip and are suffixed with "_xp".
+Download a pre-built installer from [Releases](https://github.com/Alex313031/sawbuck-ng/releases):
+`Sawbuck_x86.msi` for 32-bit, `Sawbuck_x64.msi` for 64-bit.
+
+There is no separate XP download. The installer runs there too: it is built
+with WiX 3 and declares Windows Installer 2.0, which XP ships with, and its
+minimum supported version is XP itself &ndash; 5.01 for the 32-bit package and
+5.02 for the 64-bit one, matching the binaries.
 
 ## Usage
 For how to use Sawbuck or integrate your own app with Sawbuck, see [USAGE.md](./sawbuck/USAGE.md).

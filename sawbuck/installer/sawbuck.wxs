@@ -85,6 +85,40 @@ limitations under the License.
              Compressed='yes' />
 
     <!--
+      The oldest Windows this package will install on, stated rather than left
+      implied. InstallerVersion above is 200, which is the Windows Installer
+      version XP ships with and is what lets this run there at all; it says
+      nothing about the floor, so without a launch condition the package would
+      attempt Windows 2000 and earlier and fail somewhere less legible than a
+      message box.
+
+      The numbers match the subsystem versions viewer.gyp links with, and for
+      the same reasons. VersionNT is encoded as major * 100 + minor, so 501 is
+      XP and 502 is Server 2003, which is also what 64-bit XP reports, being
+      built on the Server 2003 codebase. Hence 502 for the x64 package: there
+      is no 64-bit Windows older than that, exactly as the linker's /SUBSYSTEM
+      floor cannot go below 5.02 for that machine.
+
+      VersionNT64 rather than VersionNT in the 64-bit package, which is the
+      property that is only set at all on 64-bit Windows. An unset property
+      compares as empty and fails the test, so a 32-bit machine is refused with
+      this message instead of whatever msiexec says about the platform.
+
+      Written out per architecture rather than substituted from a define: the
+      expression contains a '>' and lives in CDATA, and literal text here needs
+      no preprocessor variable resolution to be correct.
+    -->
+<?if $(var.MsiPlatform) = x64 ?>
+    <Condition Message='Sawbuck requires Windows XP x64 / Server 2003 or newer.'>
+      <![CDATA[VersionNT64 >= 502]]>
+    </Condition>
+<?else?>
+    <Condition Message='Sawbuck requires Windows XP or newer.'>
+      <![CDATA[VersionNT >= 501]]>
+    </Condition>
+<?endif?>
+
+    <!--
       Boilerplate code to make sure we upgrade previous versions,
       and to prevent downgrades for good measure.
     -->

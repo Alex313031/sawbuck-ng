@@ -90,6 +90,15 @@
           'process_outputs_as_sources': 1,
         },
         {
+          # Note that the finished MSI installs on Windows XP, so there is no
+          # separate packaging for it and no .zip to produce. That is not an
+          # accident of WiX 3 and should not be treated as one: sawbuck.wxs
+          # declares InstallerVersion='200' -- Windows Installer 2.0, which XP
+          # ships with -- and its launch condition names 5.01 on x86 and 5.02
+          # on x64, matching what viewer.gyp links the subsystem version to.
+          # Raising InstallerVersion for a newer WiX feature would drop XP
+          # support silently, with the binary still running there perfectly
+          # well and only the installer refusing.
           'action_name': 'light',
           'extension': 'wxs',
           # Everything light reads, not just the wixobj. candle only compiles

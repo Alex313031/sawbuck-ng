@@ -52,6 +52,12 @@ Release only, because that is what gets shipped and what anyone reaching for
 the script wants; a Debug build doubles the time for output most runs never
 open. Add `--debug` for all four.
 
+The same script is what [CI](./.github/workflows/build_gyp.yml) runs, rather
+than a reimplementation of it in YAML, so a green run there and a failure here
+means the difference is the machine. It is manual-only — this syncs Chromium's
+`base`, ICU and the rest before building anything — and it uploads the two
+installers.
+
 Useful options:
 
 | Option | Effect |
@@ -179,6 +185,21 @@ Note that `_WIN32_WINNT` does **not** move. Sawbuck keeps building against the
 current SDK; winwrap lowers it to `0x0501` for its own sources only, as a
 guardrail so it cannot accidentally use something newer than the OS it has to
 run on.
+
+The installer needs nothing either, so `Sawbuck_x86.msi` installs on XP as it
+does anywhere else and there is no `.zip` to produce. Two things in
+`sawbuck.wxs` make that so, and both are worth knowing before changing either:
+
+ - `InstallerVersion='200'` — Windows Installer 2.0, which is the version XP
+   ships with. Raising it for some newer WiX feature would drop XP support in
+   the least obvious way, with the binary still running there perfectly well
+   and only the installer refusing.
+ - A launch condition of `VersionNT >= 501` on the 32-bit package and
+   `VersionNT64 >= 502` on the 64-bit one, matching the subsystem versions
+   above and for the same reasons. These are a floor rather than a gate: they
+   turn Windows 2000 and older into a clear message instead of a failure
+   further in, and `VersionNT64` is unset on 32-bit Windows, so the x64
+   package declines it by the same route.
 
 #### Building without it
 
