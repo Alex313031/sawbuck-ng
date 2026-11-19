@@ -190,6 +190,9 @@ class LogListView
   void OnSetFocus(CWindow window);
   void OnKillFocus(CWindow window);
   void OnContextMenu(CWindow wnd, CPoint point);
+  // The column-heading menu, which is not the row menu. Called from
+  // OnContextMenu when the click was on the header rather than on the list.
+  void OnHeaderContextMenu(CPoint point);
   void OnFind(UINT code, int id, CWindow window);
   void OnFindNext(UINT code, int id, CWindow window);
   void OnAutoSizeColumns(UINT code, int id, CWindow window);

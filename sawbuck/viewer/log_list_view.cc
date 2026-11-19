@@ -511,6 +511,22 @@ void LogListView::OnKillFocus(CWindow window) {
 }
 
 void LogListView::OnContextMenu(CWindow wnd, CPoint point) {
+  // A right-click on a column heading lands here too, and used to raise the
+  // row menu -- so the headings offered "Copy Row", "Set Base Time" and the
+  // rest, every one of them greyed, because the hit test below finds no row
+  // under a point that is inside the header.
+  //
+  // The header is a child control of the list view. WM_CONTEXTMENU names the
+  // window that was clicked rather than the one handling it, and the header
+  // does not handle the message, so DefWindowProc passes it to the parent with
+  // wParam still pointing at the header. Comparing against GetHeader() is what
+  // tells the two apart; nothing in the point or the hit test can, since a
+  // click just below the header also finds no row.
+  if (wnd.m_hWnd == GetHeader().m_hWnd) {
+    OnHeaderContextMenu(point);
+    return;
+  }
+
   int row = -1;
   int col = -1;
   if (point.x == -1 && point.y == -1) {
@@ -594,6 +610,41 @@ void LogListView::OnContextMenu(CWindow wnd, CPoint point) {
   // context menu wants: it is raised from OnContextMenu, i.e. on right-button
   // *up*, so the button is no longer down to select with.
   menu.TrackPopupMenu(0, point.x, point.y, wnd);
+}
+
+void LogListView::OnHeaderContextMenu(CPoint point) {
+  CMenu menu;
+  if (!menu.CreatePopupMenu()) {
+    LOG(ERROR) << "Unable to create header popup menu";
+    return;
+  }
+
+  // Shift-F10 reports (-1, -1), which as a screen position is the top-left
+  // corner of the primary monitor. Put the menu on the header instead.
+  if (point.x == -1 && point.y == -1) {
+    CRect rect;
+    GetHeader().GetWindowRect(&rect);
+    point.SetPoint((rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2);
+  }
+
+  // Mirrors the Edit menu's "Auto Size Columns", and shares its command id, so
+  // OnAutoSizeColumns and the F12 accelerator already do the work. The text
+  // and the accelerator are repeated from viewer.rc rather than read out of
+  // the menu resource: a context menu built by hand has no access to the one
+  // the frame loaded, and a GetSubMenu walk to find it would couple this to
+  // the Edit menu's layout.
+  //
+  // Enabled on the same condition the Edit menu uses, because sizing a column
+  // to its content needs content: LVSCW_AUTOSIZE measures the items, so with
+  // no rows it would shrink every column to nothing.
+  menu.AppendMenu(log_view_->GetNumRows() ? MF_ENABLED : MF_GRAYED,
+                  ID_EDIT_AUTOSIZE_COLUMNS,
+                  L"Auto &Size Columns\tF12");
+
+  // m_hWnd, not the header: TrackPopupMenu sends WM_COMMAND to the window
+  // named here, and the header has no handler for this id. The row menu above
+  // can pass its own `wnd` because there that is this window already.
+  menu.TrackPopupMenu(0, point.x, point.y, m_hWnd);
 }
 
 void LogListView::OnFind(UINT code, int id, CWindow window) {
