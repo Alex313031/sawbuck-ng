@@ -61,6 +61,14 @@ class ListViewBase
   }
 
  private:
+  // Added to a heading's own text width to get the narrowest the column can
+  // be without the heading looking cramped: comctl32 insets a header label
+  // from both edges, and a column exactly as wide as its text leaves the
+  // label touching the divider. 15 because that is what
+  // CListViewCtrl::AddColumn uses for the same purpose, so the floor below
+  // comes to the same width AddColumn itself just chose.
+  static const int kHeadingPadding = 15;
+
   template <int N> void AddColumns(const ColumnInfo (&cols)[N],
                                    const wchar_t* key_name,
                                    const wchar_t* order_value_name,
@@ -78,7 +86,26 @@ void ListViewBase<ImplClass, WinTraits>::AddColumns(
     const wchar_t* order_value_name, const wchar_t* width_value_name) {
   for (int col = 0; col < N; ++col) {
     AddColumn(cols[col].title, col);
-    SetColumnWidth(col, cols[col].width);
+
+    // Never narrower than the heading itself. The widths in kColumns are raw
+    // pixel counts picked against the data a column holds rather than the
+    // word at the top of it -- "Process ID" in 42 pixels and "Severity" in 24
+    // are both clipped -- and with nothing stored in the registry yet, on a
+    // first run or after the preferences key has been deleted, those are
+    // exactly what the user is shown. Being raw pixels they do not follow the
+    // font or the DPI in use either, while LVM_GETSTRINGWIDTH measures in the
+    // control's own font and so does.
+    //
+    // AddColumn above has in fact already sized the column this way, to
+    // GetStringWidth plus kHeadingPadding; the SetColumnWidth call that used
+    // to be here simply discarded it.
+    //
+    // The floor applies only to the defaults. A width the user dragged and
+    // SaveColumns stored is restored below just as it was, even if it clips:
+    // that was the user's own doing, and overriding it would make a narrowed
+    // column spring back open on every restart.
+    int heading = GetStringWidth(cols[col].title) + kHeadingPadding;
+    SetColumnWidth(col, cols[col].width > heading ? cols[col].width : heading);
   }
 
   // Restore column order and column widths.
