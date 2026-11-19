@@ -1,0 +1,104 @@
+Windows Registry Editor Version 5.00
+
+; Enables TLS 1.1 and 1.2 by default on the Windows versions that have them but
+; do not use them unprompted, so that Sawbuck's https symbol servers work
+; there. Windows 8 and later already do all of this; importing it there is a
+; no-op.
+;
+; Every Windows from XP SP3 up can get to TLS 1.2. None of them below 8 is
+; there out of the box, and the gap is an update plus these keys.
+;
+; The keys are identical on every version. What differs is the update:
+;
+;   XP SP3                    TLS 1.0 out of the box. TLS 1.1 and 1.2 come
+;   POSReady 2009             from KB4019276, which is a POSReady 2009 update,
+;   Embedded Standard 2009    so plain XP SP3 needs the POSReady enablement
+;   Server 2003               first:
+;                               HKLM\SYSTEM\WPA\PosReady  Installed = 1
+;                             and then the update itself.
+;
+;   Vista SP2                 TLS 1.0 and 1.1 out of the box. The same
+;   Server 2008 SP2           KB4019276 applies -- on Vista SP2 it installs
+;                             behind KB4493471 as a prerequisite, the two
+;                             sharing the 6.0.6002 servicing branch with
+;                             Server 2008 SP2.
+;
+;   7, Server 2008 R2         TLS 1.2 is already in schannel but off for
+;                             client use, and WinHTTP ignores it until
+;                             KB3140245 is installed -- that update is what
+;                             teaches WinHTTP to read DefaultSecureProtocols
+;                             at all. Check with:
+;                               wmic qfe | findstr 3140245
+;
+; So this file is the switch, not the installation. If the corresponding
+; update is missing, importing it changes nothing and reports success, which
+; is the confusing part worth knowing in advance.
+;
+; Run as administrator, then reboot -- schannel reads the protocol keys when
+; the provider initialises, so restarting Sawbuck alone will not do it.
+;
+; Machine-wide, and not scoped to Sawbuck. Every WinHTTP application on the
+; machine gains TLS 1.1 and 1.2, which is the intent, but it cannot be
+; narrowed to one process.
+;
+; To undo it, delete the values rather than importing a mirror-image file: the
+; original state is "value absent", which is not the same as "value zero".
+;
+; Note that Sawbuck does not need any of this. InitSymbolPath only fabricates
+; a symbol path when there is no saved preference and no _NT_SYMBOL_PATH, and
+; it picks http below Windows 8 precisely so that symbols work on these
+; versions untouched. Its version check is about what it can know, not about
+; what the machine can do -- it has no way to tell that this has been applied.
+;
+; So this file is for the case where you would rather have https anyway, and
+; having applied it, the direct way to ask for it is to name an https server
+; through the Symbol Path dialog or in _NT_SYMBOL_PATH. Either overrides
+; Sawbuck's own choice completely.
+
+; ---------------------------------------------------------------- schannel
+;
+; Both values are needed. Enabled turns the protocol on; DisabledByDefault
+; stops it being skipped when the caller does not name a protocol, which is
+; the case for symsrv.dll.
+;
+; Client only. Sawbuck fetches symbols and serves nothing, and enabling the
+; Server side of a protocol is a separate decision with its own consequences.
+;
+; Under SYSTEM, which is not subject to WOW64 registry redirection, so there
+; is one copy of these no matter the architecture of the process asking.
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.1\Client]
+"Enabled"=dword:00000001
+"DisabledByDefault"=dword:00000000
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client]
+"Enabled"=dword:00000001
+"DisabledByDefault"=dword:00000000
+
+; ----------------------------------------------------------------- WinHTTP
+;
+; What WinHTTP offers when the application does not ask for a specific
+; protocol. A bit field:
+;
+;   0x00000008  SSL 2.0        not set, and should not be
+;   0x00000020  SSL 3.0        not set, and should not be
+;   0x00000080  TLS 1.0
+;   0x00000200  TLS 1.1
+;   0x00000800  TLS 1.2
+;
+; 0x00000A80 is TLS 1.0 + 1.1 + 1.2. TLS 1.0 is included deliberately: this
+; value replaces the default for every WinHTTP caller on the machine, so
+; dropping it would break anything still talking to a server that offers only
+; 1.0. Use 0x00000A00 for TLS 1.1 + 1.2 only.
+;
+; Both views are set, and on 64-bit Windows the second is the one that matters
+; for Sawbuck: the x86 build is a 32-bit process, so its WinHTTP reads the
+; Wow6432Node copy. Setting only the native key is the usual way this gets
+; half-done. The Wow6432Node line is harmless on 32-bit Windows, where the key
+; simply gets created and never read.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp]
+"DefaultSecureProtocols"=dword:00000a80
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp]
+"DefaultSecureProtocols"=dword:00000a80
