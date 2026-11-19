@@ -69,7 +69,7 @@
     # InitializeCriticalSectionEx and the SRWLOCK family straight from
     # kernel32, and then not loading on XP. Generation now says which way it
     # went, and check_imports.py answers it from a finished binary -- see
-    # BUILDING.md.
+    # docs/BUILDING.md.
     #
     # The same switch sets the linker's subsystem version, because the two
     # have to agree in both directions. Without winwrap, a binary claiming

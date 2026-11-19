@@ -30,7 +30,7 @@ needs installing to build the installer.
 
 Everything else — Chromium's `base`, `build` and `testing`, GoogleTest,
 GoogleMock, ICU, zlib, libxml, modp_b64, gyp-next and winwrap — is fetched by
-`gclient`. See [DEPS](./DEPS).
+`gclient`. See [DEPS](../DEPS).
 
 ### Build it
 
@@ -44,7 +44,8 @@ build.bat
 
 That is the whole process. `build.bat` finds Visual Studio with `vswhere` (so it
 works from a plain `cmd` prompt, not only a Developer Command Prompt), installs
-the sample `gclient` solution file one directory above the repository root,
+the sample `assets\gclient` solution file one directory above the repository
+root,
 syncs the dependencies, applies `patches/` to them, generates
 `sawbuck\sawbuck.sln`, and then builds **Release for x86 and x64**.
 
@@ -52,7 +53,7 @@ Release only, because that is what gets shipped and what anyone reaching for
 the script wants; a Debug build doubles the time for output most runs never
 open. Add `--debug` for all four.
 
-The same script is what [CI](./.github/workflows/build_gyp.yml) runs, rather
+The same script is what [CI](../.github/workflows/build_gyp.yml) runs, rather
 than a reimplementation of it in YAML, so a green run there and a failure here
 means the difference is the machine. It is manual-only — this syncs Chromium's
 `base`, ICU and the rest before building anything — and it uploads the two
@@ -109,7 +110,7 @@ If you would rather drive the steps yourself:
 :: 1. Place the gclient solution file one level above the repository root.
 ::    DEPS sets use_relative_paths and the solution entry names this
 ::    directory, so it belongs in the parent, not here.
-copy gclient ..\.gclient
+copy assets\gclient ..\.gclient
 
 :: 2. Sync. The hooks that run afterwards apply patches/ to the synced
 ::    dependencies and then generate the solution, with Windows XP support,

@@ -1,5 +1,7 @@
 # Sample .gclient file for gclient from Chromium's depot_tools.
-# Rename this to .gclient and put it in the parent dir of this repo.
+# Copy this to .gclient in the parent directory of the repository, which is
+# where gclient looks for it: DEPS sets use_relative_paths and the solution
+# entry below names the repository directory. build.bat does this for you.
 
 solutions = [
   {

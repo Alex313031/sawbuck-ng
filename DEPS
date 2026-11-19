@@ -237,7 +237,7 @@ deps = {
   # even though sawbuck/sawbuck.gypi declares the variable as 0. Hence not
   # commented out here the way the genuinely unused entries are -- a sync
   # without this produces a tree that cannot generate the default build. See
-  # BUILDING.md for what it costs and how to build without it.
+  # docs/BUILDING.md for what it costs and how to build without it.
   #
   # winwrap ships its own winwrap.gyp alongside BUILD.gn, so this needs no
   # build file written here -- deliberately, since gclient sync

@@ -1,4 +1,4 @@
-# Sawbuck-ng &nbsp; <img src="./sawbuck/icon.png" width="38" height="38">
+# Sawbuck-ng &nbsp; <img src="./assets/logo.png" width="38" height="38">
 
 Sawbuck-ng is a maintained fork of [Sawbuck](https://code.google.com/archive/p/sawbuck/), a Chromium log viewer.  
 
@@ -25,7 +25,7 @@ which can then be resolved and displayed in Sawbuck using a [packaged `dbghelp.d
 
 XP support is what `build.bat` produces by default rather than a separate
 build, and comes from [winwrap](https://github.com/Alex313031/winwrap#readme) plus a
-lowered subsystem version &ndash; see [BUILDING.md](./BUILDING.md#windows-xp)
+lowered subsystem version &ndash; see [BUILDING.md](./docs/BUILDING.md#windows-xp)
 for how it works, what it costs and how to build without it. Nothing is given
 up on a modern Windows: each of winwrap's functions asks the running OS for the
 real one first and falls back only where there is none, so Windows 7 and later
@@ -46,10 +46,10 @@ minimum supported version is XP itself &ndash; 5.01 for the 32-bit package and
 5.02 for the 64-bit one, matching the binaries.
 
 ## Usage
-For how to use Sawbuck or integrate your own app with Sawbuck, see [USAGE.md](./sawbuck/USAGE.md).
+For how to use Sawbuck or integrate your own app with Sawbuck, see [USAGE.md](./docs/USAGE.md).
 
 ## Building
-Instructions for building from source, can be found in [BUILDING.md](./BUILDING.md).
+Instructions for building from source, can be found in [BUILDING.md](./docs/BUILDING.md).
 
 ## License
 Licensed under the [Apache 2.0 License](./LICENSE.md), with third party libraries under their own respective licenses.

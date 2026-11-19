@@ -38,7 +38,7 @@ REM Steps:
 REM   0. Find Visual Studio with vswhere, so this works from a plain cmd
 REM      prompt and not only a Developer Command Prompt, and hand its version
 REM      to the generator through GYP_MSVS_VERSION.
-REM   1. Copy this repo's sample 'gclient' to '.gclient' in the parent
+REM   1. Copy this repo's sample 'assets\gclient' to '.gclient' in the parent
 REM      directory if there is not one there already, which is where
 REM      gclient expects it: DEPS sets
 REM      use_relative_paths, and the solution entry names this directory, so
@@ -229,7 +229,7 @@ REM a binary that only misbehaves on XP.
 if "%DO_SYNC%"=="0" (
   echo [1-2/3] Skipping sync and generation ^(--no-sync^).
   echo         Windows XP support is whatever the solution was generated with;
-  echo         changing it means regenerating. See BUILDING.md.
+  echo         changing it means regenerating. See docs/BUILDING.md.
   goto :build
 )
 
@@ -261,8 +261,8 @@ if errorlevel 1 (
 
 echo.
 echo [1/3] Installing .gclient into %PARENT%
-if not exist "%REPO%\gclient" (
-  echo ERROR: %REPO%\gclient is missing. It is the sample solution file this
+if not exist "%REPO%\assets\gclient" (
+  echo ERROR: %REPO%\assets\gclient is missing. It is the sample solution file this
   echo        script installs; restore it from the repository.
   goto :fail
 )
@@ -275,7 +275,7 @@ REM whatever the preceding command happened to leave behind, not the copy.
 if exist "%PARENT%\.gclient" (
   echo       Using the existing %PARENT%\.gclient
 ) else (
-  copy /Y "%REPO%\gclient" "%PARENT%\.gclient" >nul
+  copy /Y "%REPO%\assets\gclient" "%PARENT%\.gclient" >nul
   if errorlevel 1 (
     echo ERROR: could not write %PARENT%\.gclient
     goto :fail
