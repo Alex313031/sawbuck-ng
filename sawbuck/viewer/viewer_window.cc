@@ -29,6 +29,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/win/event_trace_consumer.h"
+#include "base/win/windows_version.h"
 #include "sawbuck/viewer/const_config.h"
 #include "sawbuck/viewer/preferences.h"
 #include "sawbuck/viewer/provider_dialog.h"
@@ -42,6 +43,75 @@ namespace {
 // and extracts the file/line/message parts.
 const pcrecpp::RE kFileRe("\\[[^\\]]*\\:([^:]+)\\((\\d+)\\)\\].(.*\\w).*",
                           PCRE_NEWLINE_ANYCRLF | PCRE_DOTALL | PCRE_UTF8);
+
+// True if this machine looks configured to negotiate TLS 1.2 through WinHTTP,
+// which is what symsrv.dll fetches symbols with.
+//
+// Only meaningful below Windows 8, where the answer is yes without asking.
+// Below that it is a yes only if someone has done the work -- the update for
+// their version, plus these registry values -- and this is how to find out
+// without attempting a fetch and waiting for it to fail. See
+// tmp/enable_tls12.reg, which is the other half of this.
+//
+// Read-only and unprivileged: both keys are world-readable, so this costs two
+// RegOpenKeyEx calls and asks for nothing a normal user does not have.
+//
+// What it cannot establish, and the reason the caller treats a yes as "worth
+// trying" rather than a guarantee: whether this version's WinHTTP honours
+// DefaultSecureProtocols at all. That is documented for Windows 7 behind
+// KB3140245 and for 8 and later; on XP and Vista the schannel side is
+// reachable through KB4019276 but whether WinHTTP reads this value there has
+// not been confirmed on a real machine. A false yes costs symbol resolution
+// and nothing else, and is correctable from the Symbol Path dialog.
+bool IsTls12EnabledForWinHttp() {
+  CRegKey schannel;
+  if (schannel.Open(HKEY_LOCAL_MACHINE, kTls12ClientKey, KEY_READ) !=
+      ERROR_SUCCESS) {
+    return false;
+  }
+
+  // The two values mean opposite things by their absence, which is worth
+  // being careful about rather than treating them as a pair.
+  //
+  // DisabledByDefault absent means "use the system default", and below
+  // Windows 8 that default is 1 for TLS 1.2 -- available, but only to a
+  // caller that asks for it by name. symsrv does not, so absent is a no.
+  DWORD disabled_by_default = 1;
+  if (schannel.QueryDWORDValue(kDisabledByDefaultValue,
+                               disabled_by_default) != ERROR_SUCCESS ||
+      disabled_by_default != 0) {
+    return false;
+  }
+
+  // Enabled absent means the protocol is available. Only an explicit zero
+  // turns it off, so this check is for someone having disabled it on purpose
+  // after enabling it above -- contradictory, but the registry permits it and
+  // zero is the one that wins.
+  DWORD enabled = 1;
+  if (schannel.QueryDWORDValue(kEnabledValue, enabled) == ERROR_SUCCESS &&
+      enabled == 0) {
+    return false;
+  }
+
+  // And what WinHTTP offers when the caller names no protocol, which is
+  // symsrv's case. Opened in this process's own registry view deliberately:
+  // a 32-bit Sawbuck is redirected to Wow6432Node, which is the copy its own
+  // WinHTTP reads, so being redirected gives the right answer rather than a
+  // wrong one.
+  CRegKey winhttp;
+  if (winhttp.Open(HKEY_LOCAL_MACHINE, kWinHttpKey, KEY_READ) !=
+      ERROR_SUCCESS) {
+    return false;
+  }
+
+  DWORD protocols = 0;
+  if (winhttp.QueryDWORDValue(kDefaultSecureProtocolsValue, protocols) !=
+      ERROR_SUCCESS) {
+    return false;
+  }
+
+  return (protocols & kTls12Protocol) != 0;
+}
 
 bool Is64BitSystem() {
   if (sizeof(void*) == 8)  // NOLINT
@@ -1013,12 +1083,45 @@ void ViewerWindow::InitSymbolPath() {
     if (!base::CreateDirectory(sym_dir))
       return;
 
+    // https where TLS 1.2 will actually be negotiated, http otherwise. Both
+    // of these servers require TLS 1.2 now, so this is about reachability
+    // rather than preference.
+    //
+    // Windows 8 is where TLS 1.2 is on by default, which is not the same as
+    // where it is possible: every Windows from XP SP3 up can do it, given the
+    // update for its version -- KB4019276 for the XP/POSReady and Server 2008
+    // SP2 family, Vista SP2 behind KB4493471, KB3140245 on 7 -- plus the
+    // registry values. So below 8, ask instead of assuming: the short-circuit
+    // means the probe only runs where the answer is in doubt.
+    //
+    // A no is always safe. Both servers still answer over plain http with no
+    // redirect, so http works on every version either way; it is a wrong yes
+    // that costs something, and only symbol resolution.
+    bool use_https = base::win::GetVersion() >= base::win::VERSION_WIN8 ||
+                     IsTls12EnabledForWinHttp();
+
+    // Pointers rather than strings: these feed %ls directly below, and
+    // base::StringPrintf is variadic, so a std::wstring would have to be
+    // .c_str()'d anyway and a std::string could not be used at all.
+    const wchar_t* microsoft_sym_srv =
+        use_https ? kMicrosoftSymSrvHttps : kMicrosoftSymSrvHttp;
+    const wchar_t* chrome_sym_srv =
+        use_https ? kChromeSymSrvHttps : kChromeSymSrvHttp;
+
     symbol_path_ =
         base::StringPrintf(L"SRV*%ls*%ls;SRV*%ls*%ls",
                            sym_dir.value().c_str(),
-                           kMicrosoftSymSrvHttp,
+                           microsoft_sym_srv,
                            sym_dir.value().c_str(),
-                           kChromeSymSrvHttp);
+                           chrome_sym_srv);
+
+    // Worth a line in the log, because this decision is made once and then
+    // kept: the path is written to preferences immediately below, and the
+    // read at the top of this function returns early ever after. So enabling
+    // TLS 1.2 on an older Windows *after* a first run leaves the http path in
+    // place until the preference is cleared or the Symbol Path dialog is used.
+    LOG(INFO) << "Using symbol path over "
+              << (use_https ? "HTTPS" : "HTTP") << ".";
 
     // Write the newly fabricated path to our preferences.
     Preferences pref;

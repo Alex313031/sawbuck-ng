@@ -40,15 +40,46 @@ const wchar_t kWindowTitle[] = L"Sawbuck Log Viewer";
 // Session name title
 const wchar_t kSessionName[] = L"Sawbuck Log Session";
 
-// Microsoft's public symbol server. Named Http because both of these servers
-// also answer over https, which is a separate question -- they require TLS 1.2
-// for it, and that is not on by default below Windows 8.
+// Microsoft's public symbol server. See InitSymbolPath for why there are two
+// of each: http below Windows 8, where TLS 1.2 is not on by default, and
+// https from 8 up.
 const wchar_t kMicrosoftSymSrvHttp[] =
     L"http://msdl.microsoft.com/download/symbols";
+const wchar_t kMicrosoftSymSrvHttps[] =
+    L"https://msdl.microsoft.com/download/symbols";
 
 // Google's Chromium symbol server
 const wchar_t kChromeSymSrvHttp[] =
     L"http://chromium-browser-symsrv.commondatastorage.googleapis.com";
+const wchar_t kChromeSymSrvHttps[] =
+    L"https://chromium-browser-symsrv.commondatastorage.googleapis.com";
+
+// Where Windows records whether TLS 1.2 may be used, read by
+// IsTls12EnabledForWinHttp below Windows 8 to decide whether an https symbol
+// server is worth offering. Read-only, and both are readable by any user.
+//
+// The schannel key is under SYSTEM, which WOW64 does not redirect, so there is
+// one copy of it whatever the architecture of the process asking. The WinHttp
+// key is under SOFTWARE, which is redirected -- and that is wanted here, since
+// a 32-bit Sawbuck should read the same Wow6432Node copy its own WinHTTP will.
+const wchar_t kTls12ClientKey[] =
+    L"SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\"
+    L"Protocols\\TLS 1.2\\Client";
+const wchar_t kWinHttpKey[] =
+    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\WinHttp";
+
+const wchar_t kEnabledValue[] = L"Enabled";
+const wchar_t kDisabledByDefaultValue[] = L"DisabledByDefault";
+const wchar_t kDefaultSecureProtocolsValue[] = L"DefaultSecureProtocols";
+
+// The TLS 1.2 bit in DefaultSecureProtocols. The others, for reference, are
+// 0x08 SSL 2.0, 0x20 SSL 3.0, 0x80 TLS 1.0 and 0x200 TLS 1.1; only 1.2 is
+// asked about here, since it is the only one these symbol servers accept.
+//
+// unsigned long rather than DWORD, which is the same type on Windows, so that
+// this file needs no #include of its own. A constants header that compiles
+// standing alone cannot be broken by the order someone includes it in.
+constexpr unsigned long kTls12Protocol = 0x00000800;
 
 // The size of the window on a first run, when there is no saved placement to
 // restore: 60% of the work area, but never smaller than this and never larger
