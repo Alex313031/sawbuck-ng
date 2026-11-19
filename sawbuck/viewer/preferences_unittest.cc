@@ -13,6 +13,8 @@
 // limitations under the License.
 //
 #include "sawbuck/viewer/preferences.h"
+#include <string>
+
 #include "gtest/gtest.h"
 #include "sawbuck/viewer/const_config.h"
 #include "sawbuck/viewer/registry_test.h"

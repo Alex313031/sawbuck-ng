@@ -16,8 +16,11 @@
 #include "sawbuck/log_lib/symbol_lookup_service.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "base/bind.h"
+#include "base/logging.h"
+#include "base/macros.h"
 #include "base/message_loop/message_loop.h"
 
 SymbolLookupService::SymbolLookupService() : background_thread_(NULL),

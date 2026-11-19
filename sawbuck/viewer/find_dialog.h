@@ -16,11 +16,8 @@
 #ifndef SAWBUCK_VIEWER_FIND_DIALOG_H_
 #define SAWBUCK_VIEWER_FIND_DIALOG_H_
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
-#include <atlcrack.h>
-#include <string>
+#include "sawbuck/viewer/framework.h"
+
 #include "resource.h"
 
 struct FindParameters {

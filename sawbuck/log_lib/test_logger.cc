@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 // Test logger implementation.
+#include "base/macros.h"
 #include "base/win/event_trace_provider.h"
 #include <cguid.h>
 #include <initguid.h>

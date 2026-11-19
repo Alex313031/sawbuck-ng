@@ -19,6 +19,9 @@
 #include <atlbase.h>
 #include <shlwapi.h>
 
+#include <string>
+
+#include "base/macros.h"
 #include "base/strings/string_util.h"
 
 namespace com {

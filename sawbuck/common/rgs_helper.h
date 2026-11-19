@@ -29,6 +29,7 @@
 #ifndef SAWBUCK_COMMON_RGS_HELPER_H_
 #define SAWBUCK_COMMON_RGS_HELPER_H_
 
+#include "base/macros.h"
 #include "base/strings/string_util.h"
 
 struct ATLRegmapEntryHelper : public _ATL_REGMAP_ENTRY {

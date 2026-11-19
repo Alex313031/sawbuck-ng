@@ -16,13 +16,10 @@
 #ifndef SAWBUCK_VIEWER_LOG_VIEWER_H_
 #define SAWBUCK_VIEWER_LOG_VIEWER_H_
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
-#include <atlcrack.h>
-#include <atlctrls.h>
-#include <atlmisc.h>
+#include "sawbuck/viewer/framework.h"
+
 #include <atlsplit.h>
+
 #include "base/memory/scoped_ptr.h"
 #include "sawbuck/viewer/log_list_view.h"
 #include "sawbuck/viewer/resource.h"

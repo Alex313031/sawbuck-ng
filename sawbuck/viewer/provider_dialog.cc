@@ -15,14 +15,13 @@
 // Provider dialog implementation.
 #include "sawbuck/viewer/provider_dialog.h"
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
 #include <atltheme.h>
 #include <wmistr.h>  // NOLINT. wmistr must precede evntrace.h.
 #include <evntrace.h>
 #include "base/logging.h"
+#include "base/macros.h"
 #include "base/strings/stringprintf.h"
+#include "base/win/event_trace_provider.h"
 
 namespace {
 

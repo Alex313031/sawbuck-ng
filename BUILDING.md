@@ -191,10 +191,18 @@ It does two things that only work together:
    which is as low as the linker goes for that machine. Without this the loader
    rejects the binary outright, whatever its imports.
 
-Note that `_WIN32_WINNT` does **not** move. Sawbuck keeps building against the
-current SDK; winwrap lowers it to `0x0501` for its own sources only, as a
-guardrail so it cannot accidentally use something newer than the OS it has to
-run on.
+Note that `_WIN32_WINNT` does **not** follow the binary down to XP. It decides
+which declarations the SDK headers make visible at compile time, nothing more,
+and keeping it up is what makes the two mechanisms above possible — an API that
+is hidden from the compiler is one neither winwrap nor a `GetProcAddress` at
+the call site can reach.
+
+Sawbuck compiles at a Vista floor: `build/common.gypi` sets `0x0A00` for the
+whole tree, and `sawbuck/sawbuck_targets.gypi` substitutes `0x0600` for
+Sawbuck's own four compiling targets. That file explains the choice and names
+the two things an XP floor would break. winwrap lowers it to `0x0501` for its
+own sources only, as a guardrail so the shim library cannot accidentally use
+something newer than the OS it exists to support.
 
 The installer needs nothing either, so `Sawbuck_x86.msi` installs on XP as it
 does anywhere else and there is no `.zip` to produce. Two things in

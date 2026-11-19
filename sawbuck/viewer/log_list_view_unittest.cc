@@ -13,6 +13,10 @@
 // limitations under the License.
 #include "sawbuck/viewer/log_list_view.h"
 
+// For the CWindow this passes to OnClearAll. The header above would supply it,
+// but naming it here says the test uses Win32 types of its own accord.
+#include "sawbuck/viewer/framework.h"
+
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "sawbuck/viewer/mock_log_view_interfaces.h"

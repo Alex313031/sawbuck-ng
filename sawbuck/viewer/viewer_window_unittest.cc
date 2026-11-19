@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "sawbuck/viewer/viewer_window.h"
 
+#include "base/message_loop/message_loop.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "sawbuck/viewer/mock_log_view_interfaces.h"

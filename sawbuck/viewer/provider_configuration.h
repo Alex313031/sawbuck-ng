@@ -17,7 +17,9 @@
 #define SAWBUCK_VIEWER_PROVIDER_CONFIGURATION_H_
 
 #include <string>
+#include <utility>
 #include <vector>
+#include "base/macros.h"
 #include "base/win/event_trace_provider.h"
 
 class ProviderConfiguration {

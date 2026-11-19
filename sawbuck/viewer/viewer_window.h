@@ -16,23 +16,21 @@
 #ifndef SAWBUCK_VIEWER_VIEWER_WINDOW_H_
 #define SAWBUCK_VIEWER_VIEWER_WINDOW_H_
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
-#include <atlcrack.h>
-#include <atlctrls.h>
+#include "sawbuck/viewer/framework.h"
+
 #include <atldlgs.h>
-#include <atlframe.h>
-#include <atlmisc.h>
 #include <atlres.h>
+
 #include <map>
-#include <string>
-#include <vector>
+
+#include "base/callback.h"
 #include "base/cancelable_callback.h"
 #include "base/files/file_path.h"
 #include "base/memory/scoped_ptr.h"
+#include "base/message_loop/message_loop.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/thread.h"
+#include "base/time/time.h"
 #include "base/win/event_trace_controller.h"
 #include "sawbuck/log_lib/kernel_log_consumer.h"
 #include "sawbuck/log_lib/log_consumer.h"

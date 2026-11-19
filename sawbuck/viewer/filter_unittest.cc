@@ -13,6 +13,10 @@
 // limitations under the License.
 //
 #include "sawbuck/viewer/filter.h"
+#include <string>
+#include <vector>
+
+#include "base/macros.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "sawbuck/viewer/mock_log_view_interfaces.h"

@@ -16,13 +16,7 @@
 #ifndef SAWBUCK_VIEWER_FILTER_DIALOG_H_
 #define SAWBUCK_VIEWER_FILTER_DIALOG_H_
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
-#include <atlcrack.h>
-#include <atlframe.h>
-#include <string>
-#include <vector>
+#include "sawbuck/viewer/framework.h"
 
 #include "sawbuck/viewer/filter.h"
 #include "sawbuck/viewer/list_view_base.h"

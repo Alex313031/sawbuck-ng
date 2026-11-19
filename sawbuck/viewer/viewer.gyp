@@ -94,6 +94,7 @@
         'filtered_log_view.h',
         'find_dialog.cc',
         'find_dialog.h',
+        'framework.h',
         'log_viewer.h',
         'log_viewer.cc',
         'log_list_view.h',

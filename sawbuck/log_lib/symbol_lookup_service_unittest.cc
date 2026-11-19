@@ -18,8 +18,10 @@
 #include <vector>
 #include <tlhelp32.h>
 #include "base/bind.h"
+#include "base/logging.h"
 #include "base/message_loop/message_loop.h"
 #include "base/threading/thread.h"
+#include "base/time/time.h"
 #include "base/win/pe_image.h"
 #include "base/win/scoped_handle.h"
 #include "gtest/gtest.h"

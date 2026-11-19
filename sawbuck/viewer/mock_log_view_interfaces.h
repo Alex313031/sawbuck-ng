@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "base/time/time.h"
 #include "gmock/gmock.h"
 #include "sawbuck/viewer/log_list_view.h"
 

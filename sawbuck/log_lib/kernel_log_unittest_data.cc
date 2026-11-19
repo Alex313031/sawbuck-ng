@@ -15,6 +15,8 @@
 // Test data for kernel log unittest.
 #include "sawbuck/log_lib/kernel_log_unittest_data.h"
 
+#include "base/macros.h"
+
 namespace testing {
 
 const sym_util::ModuleInformation module_list[] = {

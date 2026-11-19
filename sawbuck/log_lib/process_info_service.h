@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 #include "base/synchronization/lock.h"
+#include "base/time/time.h"
 #include "sawbuck/log_lib/kernel_log_consumer.h"
 
 class IProcessInfoService {

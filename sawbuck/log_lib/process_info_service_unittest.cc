@@ -15,6 +15,7 @@
 // Symbol information service unittests.
 #include "sawbuck/log_lib/process_info_service.h"
 #include <atlsecurity.h>
+#include "base/time/time.h"
 #include "gtest/gtest.h"
 
 namespace {

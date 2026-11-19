@@ -15,15 +15,19 @@
 // Log viewer window implementation.
 #include "sawbuck/viewer/viewer_window.h"
 
+#include <string.h>
+
 #include "pcrecpp.h"  // NOLINT
 #include "base/bind.h"
 #include "base/environment.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/message_loop/message_loop.h"
 #include "base/path_service.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/time/time.h"
 #include "base/win/event_trace_consumer.h"
 #include "sawbuck/viewer/const_config.h"
 #include "sawbuck/viewer/preferences.h"

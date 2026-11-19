@@ -18,6 +18,9 @@
 
 #include <atlcomcli.h>
 
+#include <sstream>
+#include <string>
+
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace {

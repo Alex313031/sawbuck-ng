@@ -17,7 +17,9 @@
 
 #include <atlbase.h>
 #include <string>
+#include <utility>
 #include "base/logging.h"
+#include "base/macros.h"
 #include "base/win/registry.h"
 #include "sawbuck/viewer/const_config.h"
 

@@ -16,6 +16,7 @@
 #ifndef SAWBUCK_LOG_LIB_SYMBOL_LOOKUP_SERVICE_H_
 #define SAWBUCK_LOG_LIB_SYMBOL_LOOKUP_SERVICE_H_
 
+#include <map>
 #include <string>
 #include <vector>
 #include "base/callback.h"

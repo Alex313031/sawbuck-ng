@@ -14,8 +14,11 @@
 //
 // Module cache unittests.
 #include "sawbuck/sym_util/module_cache.h"
+#include <vector>
+
 #include "base/at_exit.h"
 #include "base/command_line.h"
+#include "base/time/time.h"
 #include "gtest/gtest.h"
 
 namespace sym_util {

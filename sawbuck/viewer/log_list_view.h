@@ -16,15 +16,10 @@
 #ifndef SAWBUCK_VIEWER_LOG_LIST_VIEW_H_
 #define SAWBUCK_VIEWER_LOG_LIST_VIEW_H_
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
-#include <atlcrack.h>
-#include <atlctrls.h>
-#include <atlmisc.h>
-#include <string>
-#include <vector>
+#include "sawbuck/viewer/framework.h"
+
 #include "base/message_loop/message_loop.h"
+#include "base/time/time.h"
 #include "sawbuck/viewer/find_dialog.h"
 #include "sawbuck/viewer/list_view_base.h"
 #include "sawbuck/viewer/resource.h"

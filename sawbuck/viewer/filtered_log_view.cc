@@ -15,8 +15,12 @@
 // Filtered list view implementation.
 #include "sawbuck/viewer/filtered_log_view.h"
 
+#include <algorithm>
+
 #include "base/bind.h"
 #include "base/logging.h"
+#include "base/message_loop/message_loop.h"
+#include "base/time/time.h"
 #include "pcrecpp.h"  // NOLINT
 
 FilteredLogView::FilteredLogView(ILogView* original,

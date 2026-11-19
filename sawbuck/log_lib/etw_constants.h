@@ -45,8 +45,8 @@ constexpr GUID kTraceEventClass64 = {
     { 0x80, 0x46, 0xb6, 0x76, 0x3b, 0x63, 0x1d, 0xfe } };
 
 // Event types, carried in EVENT_TRACE::Header.Class.Type.
-const base::win::EtwEventType kTraceEventTypeBegin = 0x10;
-const base::win::EtwEventType kTraceEventTypeEnd = 0x11;
-const base::win::EtwEventType kTraceEventTypeInstant = 0x12;
+constexpr base::win::EtwEventType kTraceEventTypeBegin = 0x10;
+constexpr base::win::EtwEventType kTraceEventTypeEnd = 0x11;
+constexpr base::win::EtwEventType kTraceEventTypeInstant = 0x12;
 
 #endif  // SAWBUCK_LOG_LIB_ETW_CONSTANTS_H_

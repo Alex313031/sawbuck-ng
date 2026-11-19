@@ -16,12 +16,12 @@
 
 #include "sawbuck/viewer/filter_dialog.h"
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
 #include <atldlgs.h>
 
+#include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/logging.h"
+#include "base/macros.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "pcrecpp.h"  // NOLINT

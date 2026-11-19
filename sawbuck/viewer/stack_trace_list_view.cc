@@ -15,11 +15,11 @@
 // Log viewer window implementation.
 #include "sawbuck/viewer/stack_trace_list_view.h"
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
-#include <atlframe.h>
+#include <string.h>
+
 #include "base/bind.h"
+#include "base/logging.h"
+#include "base/macros.h"
 #include "base/strings/stringprintf.h"
 #include "sawbuck/viewer/const_config.h"
 

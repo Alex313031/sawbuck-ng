@@ -16,19 +16,18 @@
 #include "sawbuck/viewer/log_list_view.h"
 
 #include <stdint.h>
+#include <string.h>
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
 #include <atlalloc.h>
-#include <atlframe.h>
 #include <wmistr.h>
 #include <evntrace.h>
 #include "base/logging.h"
 #include "base/i18n/time_formatting.h"
+#include "base/macros.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/time/time.h"
 #include "pcrecpp.h"  // NOLINT
 #include "sawbuck/log_lib/process_info_service.h"
 #include "sawbuck/viewer/const_config.h"

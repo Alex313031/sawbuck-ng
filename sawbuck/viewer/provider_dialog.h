@@ -16,13 +16,8 @@
 #ifndef SAWBUCK_VIEWER_PROVIDER_DIALOG_H_
 #define SAWBUCK_VIEWER_PROVIDER_DIALOG_H_
 
-#include <atlbase.h>
-#include <atlapp.h>
-#include <atlwin.h>
-#include <atlcrack.h>
-#include <atlctrls.h>
-#include <atlframe.h>
-#include <atlmisc.h>
+#include "sawbuck/viewer/framework.h"
+
 #include "sawbuck/viewer/provider_configuration.h"
 #include "resource.h"  // NOLINT
 

@@ -17,6 +17,7 @@
 #include <tlhelp32.h>
 #include "base/path_service.h"
 #include "base/files/file_path.h"
+#include "base/time/time.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "sawbuck/log_lib/kernel_log_unittest_data.h"

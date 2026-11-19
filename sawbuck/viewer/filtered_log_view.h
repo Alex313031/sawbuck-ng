@@ -21,7 +21,9 @@
 #include <vector>
 
 #include "base/cancelable_callback.h"
+#include "base/macros.h"
 #include "base/memory/scoped_ptr.h"
+#include "base/time/time.h"
 #include "sawbuck/viewer/filter.h"
 #include "sawbuck/viewer/log_list_view.h"
 

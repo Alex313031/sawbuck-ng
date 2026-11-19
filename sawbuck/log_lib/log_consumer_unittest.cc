@@ -13,8 +13,11 @@
 // limitations under the License.
 #include "sawbuck/log_lib/log_consumer.h"
 
+#include <string.h>
+
 #include <cguid.h>
 #include "base/logging_win.h"
+#include "base/macros.h"
 #include "base/time/time.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"

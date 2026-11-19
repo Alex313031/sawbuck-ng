@@ -16,8 +16,7 @@
 #ifndef SAWBUCK_VIEWER_VIEWER_MODULE_H_
 #define SAWBUCK_VIEWER_VIEWER_MODULE_H_
 
-#include <atlbase.h>
-#include <atlapp.h>
+#include "sawbuck/viewer/framework.h"
 
 class SawbuckAppModule: public CAppModule {
  public:
