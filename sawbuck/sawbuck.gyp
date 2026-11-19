@@ -24,14 +24,15 @@
         'common/common.gyp:*',
         'installer/installer.gyp:*',
         'log_lib/log_lib.gyp:*',
-        # 'py/py.gyp:*' is deliberately absent. It builds the Python ETW
-        # bindings as a py2.6 egg, via the vendored setuptools 0.6c11 and the
-        # bundled Python 2.6 that DEPS no longer fetches. The package itself is
-        # still Python 2 as well, evntrace.py included. Porting it is real work
-        # and nothing else here depends on it, so it is out of the build until
-        # then. Note that dropping it from here means GYP no longer loads
-        # py/py.gyp at all, so the target is not generated into the solution
-        # either; run GYP against py/py.gyp directly if you need it.
+        # 'py/py.gyp:*' is deliberately absent. It reaches the Python ETW
+        # bindings under py/etw, which are still Python 2 -- evntrace.py and
+        # setup.py included. The egg-building action that target used to carry
+        # has been removed along with third_party/setuptools, so there is
+        # nothing left for it to build; porting the package to Python 3 is the
+        # prerequisite, and nothing else here depends on it. Note that dropping
+        # it from here means GYP no longer loads py/py.gyp at all, so the
+        # target is not generated into the solution either; run GYP against
+        # py/py.gyp directly if you need it.
         'sym_util/sym_util.gyp:*',
         'viewer/viewer.gyp:*',
       ],
