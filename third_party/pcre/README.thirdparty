@@ -1,23 +1,78 @@
-URL: http://sourceforge.net/projects/pcre/files/pcre/8.00/pcre-8.00.zip/download
-Version: 8.0
+URL: https://sourceforge.net/projects/pcre/files/pcre/8.39/pcre-8.39.zip/download
+Version: 8.39
 License: BSD
-License File: files\LICENSE
+License File: files\LICENCE
 
 Description:
-This is version 8.0 of the PCRE regular expression matching library from
+This is version 8.39 of the PCRE regular expression matching library from
 http://www.pcre.org/
 
+Not 8.45, which is the last of the 8.x line: 8.39 is the newest release that
+still builds and behaves as this tree expects without further work. Sawbuck
+uses the C++ wrapper, pcrecpp::RE, from sawbuck/viewer/filter.cc.
+
 Local Modifications:
-Hand-massaged the following header files from their corresponding .in files
-to allow PCRE to compile with the desired options:
+Four generated headers, which upstream expects a configure run to produce and
+which are checked in so this build needs no autotools:
 
-config.h
-pcrecpparg.h
-pcre_stringpiece.h
-pcre_stringpiece.h
+  config.h             from config.h.generic, with twelve options enabled
+  pcre.h               a straight copy of pcre.h.generic
+  pcrecpparg.h         from pcrecpparg.h.in
+  pcre_stringpiece.h   from pcre_stringpiece.h.in
 
-pcrecpp.cc: the always-failing assert in NewlineMode's else branch was written
-'assert(NULL == "message")', which MSVC flags as C4130 -- a comparison against
-the address of a string constant. Rewritten as 'assert(false && "message")',
-the usual spelling of the same idiom. The assertion still always fires and
-still prints the message; nothing else changes.
+The substitutions in the two .in files are pcre_have_long_long and
+pcre_have_ulong_long set to 1, and pcre_have_type_traits and
+pcre_have_bits_type_traits set to 0 -- the same choices the 8.00 copy made.
+
+config.h enables SUPPORT_UTF, SUPPORT_PCRE8, HAVE_MEMMOVE, HAVE_STRERROR,
+HAVE_STRING, HAVE_STRING_H, HAVE_LIMITS_H, HAVE_STDINT_H, HAVE_STDLIB_H,
+HAVE_LONG_LONG, HAVE_UNSIGNED_LONG_LONG and HAVE__STRTOI64. Everything else
+is config.h.generic's own value, including LINK_SIZE 2, MATCH_LIMIT 10000000,
+MAX_NAME_COUNT 10000, MAX_NAME_SIZE 32, NEWLINE 10 and
+POSIX_MALLOC_THRESHOLD 10, which is what the 8.00 config.h had as well.
+PCRE_STATIC, LINK_SIZE and HAVE_CONFIG_H come from pcre.gyp's
+target_defaults rather than from here.
+
+Two things changed in the move from 8.00, both worth knowing before the next
+upgrade:
+
+  SUPPORT_UTF8 became SUPPORT_UTF plus SUPPORT_PCRE8 in PCRE 8.30.
+  pcre_internal.h still back-translates the old name, but carries a "Fixme:
+  SUPPORT_UTF8 should eventually disappear" beside it, so the new spelling is
+  what is set here.
+
+  HAVE_BCOPY was dropped. The 8.00 config.h asserted it, which was untrue on
+  MSVC -- an artefact of that file having come from a Unix configure run. It
+  never mattered, because HAVE_MEMMOVE is checked first everywhere PCRE uses
+  either, but it was a lie. The other Unix-only claims in that file went with
+  it: HAVE_BZLIB_H, HAVE_ZLIB_H, HAVE_READLINE_*, HAVE_DLFCN_H,
+  HAVE_MEMORY_H, HAVE_STRINGS_H, HAVE_INTTYPES_H and LT_OBJDIR. Only pcregrep
+  and pcretest would consult the compression and readline ones, and neither is
+  built here.
+
+And two edits to one upstream source. Both are warning fixes with no change in
+behaviour, and neither has been taken upstream -- expect to re-apply them:
+
+  pcrecpp.cc, NewlineMode's else branch: the always-failing assert was written
+  'assert(NULL == "message")', which MSVC flags as C4130, a comparison against
+  the address of a string constant. Rewritten as 'assert(false && "message")',
+  the usual spelling of the same idiom. The assertion still always fires and
+  still prints the message.
+
+  pcrecpp.cc, RE::NumberOfCapturingGroups: pcre_fullinfo's result is read only
+  by an assert, so a release build -- where assert compiles away -- leaves it
+  unreferenced and MSVC reports C4189. A (void) cast after the assert says
+  that is deliberate.
+
+Not built, and not pruned from the vendored copy either, so that this stays a
+whole upstream release rather than a subset nobody chose deliberately:
+
+  pcre16_* and pcre32_*   the 16- and 32-bit libraries, which need
+                          SUPPORT_PCRE16 or SUPPORT_PCRE32
+  sljit/                  the JIT backend, reached only through
+                          pcre_jit_compile.c, which is left out of pcre.gyp
+                          because SUPPORT_JIT is not set
+  pcre_jit_test.c         a test program for the above
+
+pcre_printint.c is in the pcretest target rather than pcre_lib, which is where
+upstream's Makefile.am puts it.

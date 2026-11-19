@@ -373,7 +373,7 @@ static int NewlineMode(int pcre_options) {
     else if (newline == -2)
       newline_mode = PCRE_NEWLINE_ANYCRLF;
     else
-      assert(NULL == "Unexpected return value from pcre_config(NEWLINE)");
+      assert(false && "Unexpected return value from pcre_config(NEWLINE)");
   }
   return newline_mode;
 }
@@ -654,6 +654,7 @@ int RE::NumberOfCapturingGroups() const {
                                   PCRE_INFO_CAPTURECOUNT,
                                   &result);
   assert(pcre_retval == 0);
+  (void)pcre_retval;  // Read only by the assert, which a release build drops.
   return result;
 }
 
