@@ -12,6 +12,12 @@
 # architectures, which is tens of minutes of runner time for a tree that does
 # not change that often.
 #
+# One job, with the sync and the two architectures as three steps. Not three
+# jobs: separate jobs do not share a workspace, so each would re-sync the
+# dependencies, which costs more than the builds it would overlap. Three steps
+# in one job gets the thing that was actually wanted -- a failure that names
+# where it happened -- for nothing.
+#
 # What it proves, in order:
 #
 #   1. gclient sync works against the pinned DEPS -- which is the part most
@@ -118,41 +124,69 @@ jobs:
           echo        Update WINDOWS_SDK in this workflow to one of the above.
           exit /b 1
 
-      # The whole build, exactly as documented: sync, apply patches/, generate,
-      # then Release for x86 and x64. winwrap is on by default here, so these
-      # are the XP-capable binaries.
+      # The build, split across three steps rather than one call to build.bat,
+      # so the log says which part failed without anyone reading into it. The
+      # sync is the slowest and the most likely to break on its own -- every
+      # revision is pinned in someone else's infrastructure -- and the two
+      # architectures fail for unrelated reasons when they fail at all. A
+      # single step reported all of that as "Build".
+      #
+      # Still build.bat in each one, not msbuild invoked from YAML: the point
+      # of this workflow is that it runs what a person runs. --sync-only and
+      # --arch exist for this, and are equally useful locally.
+      #
+      # The sync has to come first and alone, because it is what generates the
+      # solution the other two build. --no-sync on both of those is therefore
+      # load-bearing and not an optimisation: without it each would re-sync,
+      # and --reset would revert patches/ underneath a finished build.
+      #
+      # Sequential, not a matrix. A matrix would want a job per architecture,
+      # and a job per architecture means syncing Chromium's base, ICU and the
+      # rest twice -- which costs more runner time than the two builds it
+      # overlaps, and doubles the exposure to the one step most likely to be
+      # flaky. The installers also have to end up in one artifact.
       #
       # No --jobs: the runner has few enough cores that bare /m is right.
-      - name: Build (x86 and x64)
+      - name: Sync dependencies and generate the solution
         shell: cmd
-        run: build.bat
+        run: build.bat --sync-only
 
-      # Which SDK the build used, asked of the build rather than predicted.
-      # GYP writes its choice into every generated project as
+      # Which SDK the build will use, asked of the generated project rather
+      # than predicted. GYP writes its choice into every project as
       # WindowsTargetPlatformVersion, and MSBuild resolves the SDK and the ATL
-      # paths from that one property, so this is the answer and not a proxy for
-      # it.
+      # paths from that one property, so this is the answer and not a proxy
+      # for it.
       #
-      # After the build rather than before, because generation happens inside
-      # build.bat's sync. That means a mismatch is found having already paid
-      # for the build -- the trade for not reimplementing GYP's registry-driven
-      # selection here and being subtly wrong about it instead.
-      - name: Check which Windows SDK the build used
+      # Before the builds and after the generation, which is only possible
+      # because those are now separate steps. It used to run after everything,
+      # since generation happened inside the single build step -- so a
+      # mismatch was found having already paid for both builds. That was the
+      # stated price of not reimplementing GYP's registry-driven SDK selection
+      # in this file, and splitting the steps refunds it.
+      - name: Check which Windows SDK the build will use
         shell: cmd
         run: |
           set "PROJ=sawbuck\viewer\sawbuck_exe.vcxproj"
           if not exist "%PROJ%" (
-            echo ERROR: %PROJ% is missing, so the build did not generate.
+            echo ERROR: %PROJ% is missing, so the solution did not generate.
             exit /b 1
           )
           findstr /c:"WindowsTargetPlatformVersion" "%PROJ%"
           findstr /c:"<WindowsTargetPlatformVersion>%WINDOWS_SDK%<" "%PROJ%" >nul && exit /b 0
           echo.
-          echo ERROR: the build did not use %WINDOWS_SDK%; see the line above.
+          echo ERROR: the build would not use %WINDOWS_SDK%; see the line above.
           echo        GYP picks the SDK from the registry's ProductVersion, not
           echo        from whichever is newest, so a runner image change can
           echo        move it. Update WINDOWS_SDK in this workflow to match.
           exit /b 1
+
+      - name: Build x86
+        shell: cmd
+        run: build.bat --no-sync --arch x86
+
+      - name: Build x64
+        shell: cmd
+        run: build.bat --no-sync --arch x64
 
       - name: Show what was built
         shell: cmd

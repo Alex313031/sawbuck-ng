@@ -63,10 +63,27 @@ Useful options:
 | Option | Effect |
 |---|---|
 | `build.bat --debug` | Build the Debug flavours as well, for all four in total. |
+| `build.bat --arch A` | Build only `x86` or `x64`. `Win32` is taken as `x86`. Default is both. |
 | `build.bat --no-sync` | Skip the `gclient` steps and just rebuild. Fails if the solution has not been generated yet. |
+| `build.bat --sync-only` | Sync, apply `patches/` and generate the solution, then stop without building. |
 | `build.bat --no-winwrap` | Generate without winwrap, giving up [Windows XP](#windows-xp) support. Needs generation, so it does nothing with `--no-sync`. |
 | `build.bat --jobs N` | Pass `/m:N` to MSBuild instead of bare `/m`, which uses every core. |
 | `build.bat --help` | Show usage. |
+
+`--sync-only` and `--arch` are meant to be used together, to pay for the sync
+once and then build each architecture separately:
+
+```
+build.bat --sync-only
+build.bat --no-sync --arch x86
+build.bat --no-sync --arch x64
+```
+
+`--no-sync` on the two build lines is load-bearing rather than an
+optimisation. Without it each would sync again, and `gclient sync --reset`
+reverts `patches/` out from under a finished build before the hooks put them
+back. This is also exactly what the CI workflow does, so that a failure names
+the architecture it belongs to.
 
 Output lands in:
 

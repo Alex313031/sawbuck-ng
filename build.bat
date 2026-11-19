@@ -18,10 +18,21 @@ REM Syncs dependencies and builds every flavour of Sawbuck in one go.
 REM
 REM   build.bat                  sync, generate, then build Release x86 + x64
 REM   build.bat --debug          build the Debug flavours as well
+REM   build.bat --arch x64       build one architecture instead of both
 REM   build.bat --no-sync        skip the gclient steps and just rebuild
+REM   build.bat --sync-only      sync and generate, then stop
 REM   build.bat --no-winwrap     build without Windows XP support
 REM   build.bat --jobs 32        cap MSBuild parallelism (default: all cores)
 REM   build.bat --help           show usage
+REM
+REM --sync-only and --arch exist to be used together, which is what the CI
+REM workflow does: one sync, then a step per architecture, so a failure names
+REM the architecture it belongs to instead of appearing somewhere inside a
+REM single long step. Sequentially, since they share the output tree's
+REM intermediate directories only per configuration -- out\<Config>_<arch> --
+REM but share the solution file and MSBuild's own node reuse, and two msbuild
+REM invocations over one solution at once is not a configuration anyone here
+REM has tested.
 REM
 REM Steps:
 REM   0. Find Visual Studio with vswhere, so this works from a plain cmd
@@ -38,11 +49,12 @@ REM      tools/gyp_sawbuck.py to generate sawbuck/sawbuck.sln. That script
 REM      defaults Windows XP support on; --no-winwrap regenerates without it
 REM      once the sync has finished.
 REM   3. msbuild for Release|Win32 and Release|x64, plus Debug|Win32 and
-REM      Debug|x64 if --debug was given. Release only by default because that
-REM      is what gets shipped and what anyone reaching for this script wants;
-REM      a Debug build doubles the time for output most runs never open.
-REM      Each flavour's installer is then renamed to carry its architecture,
-REM      so the four cannot collide once collected in one place.
+REM      Debug|x64 if --debug was given, and narrowed to one platform if
+REM      --arch was. Release only by default because that is what gets shipped
+REM      and what anyone reaching for this script wants; a Debug build doubles
+REM      the time for output most runs never open. Each flavour's installer is
+REM      then renamed to carry its architecture, so the four cannot collide
+REM      once collected in one place.
 REM
 REM Three notes on that sync. --reset reverts the patches that patches/
 REM applies to build/common.gypi, so they have to be re-applied afterwards --
@@ -74,8 +86,10 @@ for %%I in ("%REPO%\..") do set "PARENT=%%~fI"
 set "SLN=%REPO%\sawbuck\sawbuck.sln"
 
 set "DO_SYNC=1"
+set "DO_BUILD=1"
 set "DO_WINWRAP=1"
 set "DO_DEBUG=0"
+set "ARCHES=both"
 set "JOBS="
 
 REM Options may appear in any order. 'shift' takes effect from the next line
@@ -83,8 +97,10 @@ REM on, which is why each branch jumps back to re-read %1.
 :parse_args
 if "%~1"=="" goto :args_done
 if /i "%~1"=="--no-sync" set "DO_SYNC=0" & shift & goto :parse_args
+if /i "%~1"=="--sync-only" set "DO_BUILD=0" & shift & goto :parse_args
 if /i "%~1"=="--no-winwrap" set "DO_WINWRAP=0" & shift & goto :parse_args
 if /i "%~1"=="--debug" set "DO_DEBUG=1" & shift & goto :parse_args
+if /i "%~1"=="--arch" set "ARCHES=%~2" & shift & shift & goto :parse_args
 if /i "%~1"=="--jobs" set "JOBS=%~2" & shift & shift & goto :parse_args
 if /i "%~1"=="--help" goto :usage
 if /i "%~1"=="-h" goto :usage
@@ -93,6 +109,31 @@ echo ERROR: unknown option: %~1
 echo.
 goto :usage
 :args_done
+
+REM Win32 is accepted as an alias because that is what MSBuild and the
+REM generated solution call the 32-bit platform, so it is the name anyone
+REM reading the build output has in front of them. Everything downstream of
+REM here uses x86, which is what the output directories and the installers are
+REM named after.
+if /i "%ARCHES%"=="win32" set "ARCHES=x86"
+if /i "%ARCHES%"=="x86" goto :arch_ok
+if /i "%ARCHES%"=="x64" goto :arch_ok
+if /i "%ARCHES%"=="both" goto :arch_ok
+echo ERROR: --arch takes x86, x64 or both, got "%ARCHES%".
+echo.
+goto :usage
+:arch_ok
+REM Normalise the case, since the value is compared literally below and is
+REM also printed.
+if /i "%ARCHES%"=="x86" set "ARCHES=x86"
+if /i "%ARCHES%"=="x64" set "ARCHES=x64"
+if /i "%ARCHES%"=="both" set "ARCHES=both"
+
+if "%DO_SYNC%%DO_BUILD%"=="00" (
+  echo ERROR: --no-sync and --sync-only together leave nothing to do.
+  echo.
+  goto :usage
+)
 
 if not defined JOBS goto :jobs_ok
 echo %JOBS%| findstr /r /c:"^[1-9][0-9]*$" >nul
@@ -272,6 +313,17 @@ if "%DO_WINWRAP%"=="0" (
 
 :build
 REM ----------------------------------------------------------------- 3. build
+if "%DO_BUILD%"=="0" (
+  echo.
+  echo ==========================================================
+  echo  Sync and generation finished. --sync-only, so stopping here.
+  echo  Build it with:  build.bat --no-sync
+  echo ==========================================================
+  popd
+  endlocal
+  exit /b 0
+)
+
 if not exist "%SLN%" (
   echo ERROR: %SLN% does not exist.
   echo        Run without --no-sync, or generate it with:
@@ -290,14 +342,17 @@ REM once and %FAILED% would expand to its value from before the loop started.
 REM A called routine is re-parsed per invocation, so plain expansion is right
 REM and delayed expansion is not needed.
 REM
-REM Release only unless --debug. The Debug calls are guarded one at a time
-REM rather than wrapped in a block so that each stays a plain 'call', which is
-REM what lets :build_one append to FAILED by ordinary expansion.
+REM Release only unless --debug, and both architectures unless --arch named
+REM one. The guards are per line rather than wrapped in a block so that each
+REM stays a plain 'call', which is what lets :build_one append to FAILED by
+REM ordinary expansion. Chained ifs for the same reason -- an 'if ( ... )'
+REM block around the calls would reintroduce the parsing problem described
+REM above.
 set "FAILED="
-if "%DO_DEBUG%"=="1" call :build_one Debug   Win32
-call :build_one Release Win32
-if "%DO_DEBUG%"=="1" call :build_one Debug   x64
-call :build_one Release x64
+if "%DO_DEBUG%"=="1" if not "%ARCHES%"=="x64" call :build_one Debug   Win32
+if not "%ARCHES%"=="x64" call :build_one Release Win32
+if "%DO_DEBUG%"=="1" if not "%ARCHES%"=="x86" call :build_one Debug   x64
+if not "%ARCHES%"=="x86" call :build_one Release x64
 
 echo.
 echo ==========================================================
@@ -311,16 +366,20 @@ if defined FAILED (
   endlocal
   exit /b 1
 )
-if "%DO_DEBUG%"=="1" (
-  echo  All four flavours built. Output is under:
-) else (
-  echo  Both Release flavours built. Output is under:
-)
-if "%DO_DEBUG%"=="1" echo    %REPO%\out\Debug_x86
-echo    %REPO%\out\Release_x86
-if "%DO_DEBUG%"=="1" echo    %REPO%\out\Debug_x64
-echo    %REPO%\out\Release_x64
+REM Built as a string rather than nested ifs, which keeps this out of
+REM parenthesised blocks: there are four combinations of --debug and --arch
+REM and batch's if/else nesting is not worth spending on them.
+set "WHAT=Both Release flavours"
+if "%DO_DEBUG%"=="1" set "WHAT=All four flavours"
+if not "%ARCHES%"=="both" set "WHAT=Release %ARCHES%"
+if not "%ARCHES%"=="both" if "%DO_DEBUG%"=="1" set "WHAT=Debug and Release %ARCHES%"
+echo  %WHAT% built. Output is under:
+if "%DO_DEBUG%"=="1" if not "%ARCHES%"=="x64" echo    %REPO%\out\Debug_x86
+if not "%ARCHES%"=="x64" echo    %REPO%\out\Release_x86
+if "%DO_DEBUG%"=="1" if not "%ARCHES%"=="x86" echo    %REPO%\out\Debug_x64
+if not "%ARCHES%"=="x86" echo    %REPO%\out\Release_x64
 if not "%DO_DEBUG%"=="1" echo  Add --debug for the Debug flavours.
+if not "%ARCHES%"=="both" echo  This was --arch %ARCHES%; the other architecture was not built.
 echo ==========================================================
 popd
 endlocal
@@ -396,19 +455,29 @@ if errorlevel 1 (
 exit /b 0
 
 :usage
-echo Usage: build.bat [--debug] [--no-sync] [--no-winwrap] [--jobs N]
+echo Usage: build.bat [--debug] [--arch x86^|x64^|both] [--no-sync]
+echo                  [--sync-only] [--no-winwrap] [--jobs N]
 echo.
 echo Builds Release for x86 and x64. Each flavour's installer is named after
 echo its architecture: Sawbuck_x86.msi, Sawbuck_x64.msi.
 echo.
 echo   --debug        Build the Debug flavours as well, for all four in total.
+echo   --arch A       Build only one architecture: x86 or x64. Win32 is taken
+echo                  as x86. Default is both.
 echo   --no-sync      Skip gclient sync and runhooks; build the solution as it
 echo                  stands. Fails if it has not been generated yet.
+echo   --sync-only    Sync, patch and generate, then stop without building.
 echo   --no-winwrap   Generate without winwrap, giving up Windows XP support.
 echo                  The default links it, so one binary runs on XP through
 echo                  11. Needs generation, so it does nothing with --no-sync.
 echo   --jobs N       Pass /m:N to MSBuild instead of bare /m. Default is /m,
 echo                  which uses every core.
+echo.
+echo One architecture at a time, paying for the sync once:
+echo.
+echo   build.bat --sync-only
+echo   build.bat --no-sync --arch x86
+echo   build.bat --no-sync --arch x64
 endlocal
 exit /b 1
 
