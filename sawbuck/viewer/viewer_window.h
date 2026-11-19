@@ -56,6 +56,7 @@ class ViewerWindow
   BEGIN_MSG_MAP_EX(ViewerWindow)
     MSG_WM_CREATE(OnCreate)
     MSG_WM_DESTROY(OnDestroy)
+    MSG_WM_GETMINMAXINFO(OnGetMinMaxInfo)
     COMMAND_ID_HANDLER(ID_FILE_IMPORT, OnImport)
     COMMAND_ID_HANDLER(ID_FILE_EXIT, OnExit)
     COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAbout)
@@ -125,6 +126,15 @@ class ViewerWindow
   virtual BOOL PreTranslateMessage(MSG* pMsg);
   int OnCreate(LPCREATESTRUCT lpCreateStruct);
   void OnDestroy();
+  void OnGetMinMaxInfo(LPMINMAXINFO min_max_info);
+
+  // Sizes and centres the window for a first run, when there is no saved
+  // placement in the registry to restore. Called from OnCreate.
+  //
+  // Returns false if the window was left as it was: either the work area could
+  // not be measured, or the move itself was refused. Neither is fatal -- the
+  // window keeps the size Windows gave it at creation.
+  bool SetDefaultPlacement();
 
   // Host for compile-time asserts on privates.
   static void CompileAsserts();

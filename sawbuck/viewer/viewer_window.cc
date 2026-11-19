@@ -32,21 +32,16 @@
 #include "sawbuck/viewer/const_config.h"
 #include "sawbuck/viewer/preferences.h"
 #include "sawbuck/viewer/provider_dialog.h"
+#include "sawbuck/viewer/viewer_constants.h"
 #include "sawbuck/viewer/viewer_module.h"
 #include <initguid.h>  // NOLINT
 
 namespace {
 
-const wchar_t* kMicrosoftSymSrv = L"http://msdl.microsoft.com/download/symbols";
-const wchar_t* kChromeSymSrv =
-    L"http://chromium-browser-symsrv.commondatastorage.googleapis.com";
-
 // A regular expression that matches "[<stuff>:<file>(<line>)].message"
 // and extracts the file/line/message parts.
 const pcrecpp::RE kFileRe("\\[[^\\]]*\\:([^:]+)\\((\\d+)\\)\\].(.*\\w).*",
                           PCRE_NEWLINE_ANYCRLF | PCRE_DOTALL | PCRE_UTF8);
-
-const wchar_t kSessionName[] = L"Sawbuck Log Session";
 
 bool Is64BitSystem() {
   if (sizeof(void*) == 8)  // NOLINT
@@ -791,7 +786,7 @@ int ViewerWindow::OnCreate(LPCREATESTRUCT lpCreateStruct) {
   UIAddStatusBar(m_hWndStatusBar);
 
   // Set the main window title.
-  SetWindowText(L"Sawbuck Log Viewer");
+  SetWindowText(kWindowTitle);
 
   log_viewer_.SetLogView(this);
   log_viewer_.SetSymbolLookupService(&symbol_lookup_service_);
@@ -808,6 +803,12 @@ int ViewerWindow::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 
   // Retrieve our placement from registry if available, and
   // place our window to the last saved placement if so.
+  //
+  // Note that the key existing is not the same as the value existing: the
+  // installer writes 'installed' under this same key, so it is there from the
+  // moment Sawbuck is installed. Whether to use the default size is decided by
+  // the inner read, not by this open.
+  bool restored = false;
   CRegKey key;
   ULONG err = key.Open(HKEY_CURRENT_USER, config::kSettingsKey);
   if (err == ERROR_SUCCESS) {
@@ -822,8 +823,16 @@ int ViewerWindow::OnCreate(LPCREATESTRUCT lpCreateStruct) {
         placement.showCmd = SW_SHOWNORMAL;
       }
       SetWindowPlacement(&placement);
+      restored = true;
     }
   }
+
+  // Not fatal if it fails -- the window keeps the size Windows chose for it at
+  // creation, which is a usable window and not a broken one -- but it means
+  // either the monitor could not be measured or the move was refused, and
+  // neither should happen.
+  if (!restored && !SetDefaultPlacement())
+    LOG(WARNING) << "Could not apply the default window placement.";
 
   UpdateLayout();
   UIAddMenuBar(m_hWnd);
@@ -834,6 +843,71 @@ int ViewerWindow::OnCreate(LPCREATESTRUCT lpCreateStruct) {
   loop->AddIdleHandler(this);
 
   return 0;
+}
+
+bool ViewerWindow::SetDefaultPlacement() {
+  // The work area rather than the whole screen, so the taskbar is not counted
+  // as space we can use. Of the monitor this window landed on, which with
+  // nothing saved is the primary one, but asking the monitor is still the
+  // right question to ask.
+  CRect work_area;
+  HMONITOR monitor = ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTOPRIMARY);
+  MONITORINFO info = { sizeof(info) };
+  if (monitor != NULL && ::GetMonitorInfo(monitor, &info)) {
+    work_area = info.rcWork;
+  } else if (!::SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0)) {
+    // Neither answered, which should not happen. Leave the window at whatever
+    // size it was created with -- CW_USEDEFAULT, so Windows chose it -- rather
+    // than guess at a screen we failed to measure.
+    return false;
+  }
+
+  int width = MulDiv(work_area.Width(), kDefaultWorkAreaFraction, 100);
+  int height = MulDiv(work_area.Height(), kDefaultWorkAreaFraction, 100);
+
+  // The floor, then the ceiling, and in that order. Raising to the minimum
+  // first and capping to the work area second means a display too small for
+  // the minimum gets a window the size of its work area rather than one
+  // hanging off the edge of the screen. That is not hypothetical: 60% of a
+  // 1024x768 XP desktop is 614x443, which the floor lifts to 1180x600, which
+  // is wider than the screen.
+  if (width < kMinDefaultWidth)
+    width = kMinDefaultWidth;
+  if (height < kMinDefaultHeight)
+    height = kMinDefaultHeight;
+  if (width > work_area.Width())
+    width = work_area.Width();
+  if (height > work_area.Height())
+    height = work_area.Height();
+
+  // Centred in the work area, computed here rather than with CenterWindow()
+  // so that it is the work area we centre in and not the whole screen -- a
+  // window centred on the screen sits slightly low when the taskbar is at the
+  // bottom.
+  int x = work_area.left + (work_area.Width() - width) / 2;
+  int y = work_area.top + (work_area.Height() - height) / 2;
+
+  return SetWindowPos(NULL, x, y, width, height,
+                      SWP_NOZORDER | SWP_NOACTIVATE) != FALSE;
+}
+
+void ViewerWindow::OnGetMinMaxInfo(LPMINMAXINFO min_max_info) {
+  // A floor on the resize, not on the default size above. Set unconditionally
+  // and not merged with whatever the default frame reported, because the
+  // default is far smaller than this -- SM_CXMINTRACK by SM_CYMINTRACK, about
+  // 136 by 39 -- so taking the larger would always pick ours anyway.
+  //
+  // ptMinTrackSize is the whole window including its frame and caption, which
+  // is the measure the user is dragging.
+  min_max_info->ptMinTrackSize.x = kMinTrackWidth;
+  min_max_info->ptMinTrackSize.y = kMinTrackHeight;
+
+  // Deliberately not calling SetMsgHandled(FALSE) to pass this on. Of the
+  // classes ViewerWindow chains to -- CUpdateUI and CFrameWindowImpl -- neither
+  // handles WM_GETMINMAXINFO, so there is nothing downstream to consult and
+  // the values above are the whole answer. The one WTL class that does handle
+  // it, CDialogResize, does exactly this: assigns ptMinTrackSize from a
+  // stored point and returns 0.
 }
 
 void ViewerWindow::OnDestroy() {
@@ -942,9 +1016,9 @@ void ViewerWindow::InitSymbolPath() {
     symbol_path_ =
         base::StringPrintf(L"SRV*%ls*%ls;SRV*%ls*%ls",
                            sym_dir.value().c_str(),
-                           kMicrosoftSymSrv,
+                           kMicrosoftSymSrvHttp,
                            sym_dir.value().c_str(),
-                           kChromeSymSrv);
+                           kChromeSymSrvHttp);
 
     // Write the newly fabricated path to our preferences.
     Preferences pref;

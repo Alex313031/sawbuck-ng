@@ -95,6 +95,7 @@
         'find_dialog.cc',
         'find_dialog.h',
         'framework.h',
+        'viewer_constants.h',
         'log_viewer.h',
         'log_viewer.cc',
         'log_list_view.h',
