@@ -5,18 +5,41 @@
 # No separate XP build to make: build.bat links winwrap by default, so one
 # binary covers XP through 11, and the WiX 3 installer runs on XP as well
 # (InstallerVersion 200, and a launch condition of 5.01 rather than anything
-# newer). The artifacts are therefore just Sawbuck_x86.msi and Sawbuck_x64.msi.
+# newer). So there is one build per architecture, packaged two ways, and one
+# artifact carrying all of it:
+#
+#   Sawbuck-<rev>.zip
+#     Sawbuck_<version>_x86.msi    installer
+#     Sawbuck_<version>_x64.msi
+#     Sawbuck_<version>_x86.zip    portable: run it from a directory, no install
+#     Sawbuck_<version>_x64.zip
+#
+# <version> is MAJOR.MINOR.BUILD from sawbuck/VERSION, read once in the build
+# job and passed to the publish job as an output. Note that build.bat names a
+# local build's installer Sawbuck_<arch>.msi with no version, and that is
+# deliberate -- a local build sits in a tree you can ask, a downloaded asset
+# has to say for itself.
+#
+# Two levels of packaging, which are for different things. The artifact is one
+# zip holding all four files, because GitHub zips an artifact on download
+# whatever it holds: unzip it and the four are ready to attach somewhere by
+# hand. The ci-build prerelease gets the same four attached individually, so
+# each is a direct download.
 #
 # Manual only. There is no push or pull_request trigger on purpose: this syncs
 # Chromium's M49 base, ICU and the rest, then builds Release for two
 # architectures, which is tens of minutes of runner time for a tree that does
-# not change that often.
+# not change that often. One consequence worth knowing: ci-build therefore
+# moves when someone asks for a build, not on every push, so it can lag main.
 #
-# One job, with the sync and the two architectures as three steps. Not three
-# jobs: separate jobs do not share a workspace, so each would re-sync the
+# Two jobs, and the architectures are not among them. The build is one job
+# with the sync and the two architectures as three steps, because separate
+# jobs do not share a workspace -- a job per architecture would re-sync the
 # dependencies, which costs more than the builds it would overlap. Three steps
-# in one job gets the thing that was actually wanted -- a failure that names
-# where it happened -- for nothing.
+# in one job gets the thing that was actually wanted, a failure that names
+# where it happened, for nothing. Publishing is a second job because it needs
+# write permission and a Linux runner, and because it must not run when the
+# build fails.
 #
 # What it proves, in order:
 #
@@ -37,7 +60,9 @@
 #      won the link", not "this binary has no post-XP imports". Reach for
 #      --show-all, which lists every import and marks the covered ones, when
 #      a binary that passes this still will not start.
-#   4. Both installers exist and are uploaded.
+#   4. Both installers exist, both portable sets are complete, and all of it
+#      is uploaded. "Complete" is checked file by file rather than assumed:
+#      a portable build missing icudtl.dat starts and then fails on use.
 
 name: Build Sawbuck-ng
 
@@ -60,7 +85,12 @@ jobs:
     # again. Visual Studio 2022 is what this tree is known to build with, and
     # what build.bat falls back to naming.
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 60
+
+    # So the publish job can name the assets without parsing sawbuck/VERSION a
+    # second time. Two copies of that parsing is two things to keep in step.
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
 
     steps:
       - name: Checkout
@@ -75,6 +105,32 @@ jobs:
           rem stream number, so `...a1>> file` redirects stream 1 and writes
           rem "short=a".
           for /f %%i in ('git rev-parse --short HEAD') do >>%GITHUB_OUTPUT% echo short=%%i
+
+      # The version the assets are named after, read from the one file that
+      # decides it. sawbuck/VERSION is what version.gen.template expands into
+      # SAWBUCK_VER_STR_DOTTED, so a name built from it cannot disagree with
+      # what the About box reports.
+      #
+      # MAJOR.MINOR.BUILD, three components rather than the four in the About
+      # box: PATCH has been 0 throughout and the release tags are three, so
+      # this matches the tags an asset sits beside.
+      - name: Record the version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = @{}
+          Get-Content sawbuck/VERSION | ForEach-Object {
+            if ($_ -match '^(MAJOR|MINOR|BUILD|PATCH)=(\d+)$') { $v[$Matches[1]] = $Matches[2] }
+          }
+          foreach ($k in 'MAJOR', 'MINOR', 'BUILD') {
+            if (-not $v.ContainsKey($k)) {
+              Write-Output "ERROR: sawbuck/VERSION has no $k= line."
+              exit 1
+            }
+          }
+          $version = "$($v.MAJOR).$($v.MINOR).$($v.BUILD)"
+          Write-Output "Version: $version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       # gclient, which build.bat requires on PATH and which also supplies the
       # python3 the DEPS hooks invoke. Appended rather than prepended so
@@ -217,17 +273,181 @@ jobs:
       # GitHub zips every artifact, so this downloads as a .zip containing two
       # .msi files -- which is a property of the upload and not a return of the
       # old per-architecture .zip packaging.
+      # Everything a release needs goes into dist\, which is what the single
+      # artifact carries: the two installers from here, and the two portable
+      # zips from the step below.
+      #
+      # The version goes into the name here rather than in build.bat, which
+      # keeps naming its output Sawbuck_<arch>.msi. That asymmetry is on
+      # purpose: a local build sits in a tree you can ask the version of, while
+      # a release asset is downloaded on its own and has to say.
       - name: Stage the installers
         shell: cmd
+        env:
+          VER: ${{ steps.ver.outputs.version }}
         run: |
-          mkdir installers || exit /b 1
-          copy /Y out\Release_x86\Sawbuck_x86.msi installers\ || exit /b 1
-          copy /Y out\Release_x64\Sawbuck_x64.msi installers\ || exit /b 1
-          dir /b installers
+          mkdir dist || exit /b 1
+          copy /Y out\Release_x86\Sawbuck_x86.msi dist\Sawbuck_%VER%_x86.msi || exit /b 1
+          copy /Y out\Release_x64\Sawbuck_x64.msi dist\Sawbuck_%VER%_x64.msi || exit /b 1
+          dir /b dist
 
+      # The portable set: run it from a directory, no installation.
+      #
+      # The contents are taken from what the installer puts on disk rather
+      # than guessed, so the two cannot drift -- sawbuck/installer/sawbuck.wxs
+      # ships exactly these four, at File ids SawbuckExeFile, DbgHelpDllFile,
+      # SymSrvDllFile and IcuDataFile. All four are in the build output by the
+      # time this runs: copy_dlls puts the architecture's debugging pair
+      # beside the executable, and third_party/icu's copy_icudtl_dat#host
+      # copies the data file there because icu_use_data_file_flag is 1.
+      #
+      # Nothing else is needed. Release builds link the static CRT -- the
+      # component variable defaults to static_library, so common.gypi picks
+      # /MT for win_release_RuntimeLibrary -- so there is no Visual C++
+      # redistributable to carry, and the application manifest is embedded in
+      # the executable rather than sitting beside it.
+      #
+      # Worth knowing before calling it portable: the manifest asks for
+      # requireAdministrator, because controlling an ETW session does need it.
+      # So this avoids installing, not elevating.
+      #
+      # Each file is checked rather than copied blind. A missing icudtl.dat
+      # would produce a zip that launches and then fails on first use, which
+      # is worse than a failed build.
+      #
+      # Real zips, written into dist\ beside the installers, and the names are
+      # final: Sawbuck_x86.zip is what gets attached to a release, not an
+      # intermediate. That means the artifact download is a zip containing two
+      # zips, which is deliberate here and not the "double zipped" mistake
+      # from winwrap's workflow. The difference is what the inner zip is for.
+      # There, it was the deliverable and the artifact wrapper was in the way;
+      # here the wrapper is transport that gets discarded on unzip, leaving
+      # exactly the four files a release wants with the names it wants.
+      - name: Stage the portable builds
+        shell: pwsh
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          $files = 'Sawbuck.exe', 'dbghelp.dll', 'symsrv.dll', 'icudtl.dat'
+          foreach ($arch in 'x86', 'x64') {
+            $src = "out/Release_$arch"
+            $staging = "portable/Sawbuck_$arch"
+            New-Item -ItemType Directory -Path $staging -Force | Out-Null
+            foreach ($f in $files) {
+              $path = Join-Path $src $f
+              if (-not (Test-Path $path)) {
+                Write-Output "ERROR: $path is missing, so the portable build would be incomplete."
+                exit 1
+              }
+              Copy-Item $path $staging
+            }
+            Copy-Item LICENSE.md $staging
+            # The wildcard is what keeps the files at the root of the zip
+            # rather than inside a Sawbuck_<arch>\ directory.
+            # ${env:VER} braced, not $env:VER -- an underscore is a valid
+            # identifier character, so the bare form would look for a variable
+            # called VER_ and expand to nothing.
+            $zip = "dist/Sawbuck_${env:VER}_$arch.zip"
+            Compress-Archive -Path "$staging/*" -DestinationPath $zip -Force
+            Write-Output "$(Split-Path $zip -Leaf):"
+            Get-ChildItem $staging | ForEach-Object { "  {0,10:N0}  {1}" -f $_.Length, $_.Name }
+          }
+          Write-Output ""
+          Write-Output "dist:"
+          Get-ChildItem dist | ForEach-Object { "  {0,10:N0}  {1}" -f $_.Length, $_.Name }
+
+      # One artifact with all four release files. Unzip it and everything is
+      # ready to attach to a release as it stands.
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Sawbuck-${{ steps.rev.outputs.short }}
-          path: installers/*.msi
+          path: dist/*
           if-no-files-found: error
+
+  # Roll the ci-build prerelease so the newest successful build of main is
+  # always downloadable without digging through the Actions tab. Same
+  # arrangement as winwrap and nano-win: one release, one lower-case ci-build
+  # tag, deleted and recreated each time so the tag always points at the commit
+  # its assets were built from.
+  #
+  # Note that this workflow is workflow_dispatch only, so ci-build moves when
+  # someone asks for a build rather than on every push. That is deliberate --
+  # see the note at the top about what a run costs -- and it means ci-build can
+  # lag main. The commit it was built from is in the notes and in the tag.
+  publish:
+    name: Publish ci-build
+    needs: build
+    if: ${{ success() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      # For git log and sawbuck/VERSION, both of which go into the notes.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # By pattern rather than by name, so this does not need the build job's
+      # short-sha output plumbed through as a job output.
+      - name: Download the release files
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: Sawbuck-*
+          merge-multiple: true
+
+      # Nothing to repackage here, unlike winwrap's equivalent job: the build
+      # job already wrote the four files with their final names, so what gets
+      # published is byte-for-byte what the import and subsystem checks ran
+      # against. This step only confirms all four arrived.
+      - name: Check what will be published
+        env:
+          VER: ${{ needs.build.outputs.version }}
+        run: |
+          ls -la dist
+          for f in "Sawbuck_${VER}_x86.msi" "Sawbuck_${VER}_x64.msi" \
+                   "Sawbuck_${VER}_x86.zip" "Sawbuck_${VER}_x64.zip"; do
+            if [ ! -f "dist/$f" ]; then
+              echo "ERROR: dist/$f is missing from the build job's artifact"
+              exit 1
+            fi
+          done
+
+      - name: Roll the ci-build prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ needs.build.outputs.version }}
+        run: |
+          # Header, then the full commit message, so a multi-line message
+          # customises the notes the way it does for winwrap and nano-win.
+          {
+            echo "Automated build of Sawbuck $VER at commit ${{ github.sha }}"
+            echo
+            echo "Built with MSVC 2022 against Windows SDK ${{ env.WINDOWS_SDK }}."
+            echo "Runs on Windows XP through 11: winwrap supplies the imports XP"
+            echo "does not export, and the installer asks only for Windows"
+            echo "Installer 2.0."
+            echo
+            echo "| Asset | What it is |"
+            echo "|---|---|"
+            echo "| \`Sawbuck_${VER}_x86.msi\` | 32-bit installer |"
+            echo "| \`Sawbuck_${VER}_x64.msi\` | 64-bit installer |"
+            echo "| \`Sawbuck_${VER}_x86.zip\` | 32-bit portable: unzip and run, no installation |"
+            echo "| \`Sawbuck_${VER}_x64.zip\` | 64-bit portable |"
+            echo
+            echo "A prerelease, and rolling: this tag is deleted and recreated"
+            echo "by every successful build of main, so treat it as the current"
+            echo "state of the tree rather than as a version."
+            echo
+            echo "----"
+            git log -1 --format='%B'
+          } > release-notes.md
+          # Delete the old release and its tag, then recreate at this commit so
+          # the tag always points at what the assets were built from.
+          gh release delete ci-build --cleanup-tag --yes || true
+          gh release create ci-build dist/* \
+            --target "${{ github.sha }}" \
+            --title "CI Build (latest)" \
+            --prerelease \
+            --notes-file release-notes.md
