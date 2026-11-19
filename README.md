@@ -1,7 +1,6 @@
 # Sawbuck-ng &nbsp; <img src="./assets/logo.png" width="38" height="38">
 
 Sawbuck-ng is a maintained fork of [Sawbuck](https://code.google.com/archive/p/sawbuck/), a Chromium log viewer.  
-
 Dependencies have been updated/restored, build support for Visual Studio 2022 added, with further enhancements listed below.  
 
 ## Synopsis
@@ -19,9 +18,19 @@ which can then be resolved and displayed in Sawbuck using a [packaged `dbghelp.d
  - Building with current toolchains restored.
  - Legacy Windows support restored, down to Windows XP.
 
+## Download
+Download a pre-built .msi installer from [Releases](https://github.com/Alex313031/sawbuck-ng/releases).  
+There are also portable .zips available.
+
+## Usage
+For how to use Sawbuck or integrate your own app with Sawbuck, see [USAGE.md](./docs/USAGE.md).
+
+## Building
+Instructions for building from source can be found in [BUILDING.md](./docs/BUILDING.md).
+
 ## Supported Windows versions
 
-**XP, Vista, 7, 8, 8.1, 10 and 11, 32-bit and 64-bit — all from one binary.**
+**XP, Vista, 7, 8, 8.1, 10 and 11, 32-bit and 64-bit, all from one binary.**
 
 XP support is what `build.bat` produces by default rather than a separate
 build, and comes from [winwrap](https://github.com/Alex313031/winwrap#readme) plus a
@@ -36,20 +45,5 @@ tagged release, so no published Sawbuck binary has run on it since. This one
 does, and without pinning an old toolset: it is built against the current
 Windows SDK with Visual Studio 2022.
 
-## Download
-Download a pre-built installer from [Releases](https://github.com/Alex313031/sawbuck-ng/releases):
-`Sawbuck_x86.msi` for 32-bit, `Sawbuck_x64.msi` for 64-bit.
-
-There is no separate XP download. The installer runs there too: it is built
-with WiX 3 and declares Windows Installer 2.0, which XP ships with, and its
-minimum supported version is XP itself &ndash; 5.01 for the 32-bit package and
-5.02 for the 64-bit one, matching the binaries.
-
-## Usage
-For how to use Sawbuck or integrate your own app with Sawbuck, see [USAGE.md](./docs/USAGE.md).
-
-## Building
-Instructions for building from source, can be found in [BUILDING.md](./docs/BUILDING.md).
-
-## License
+### License
 Licensed under the [Apache 2.0 License](./LICENSE.md), with third party libraries under their own respective licenses.
