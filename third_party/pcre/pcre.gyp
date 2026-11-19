@@ -63,6 +63,7 @@
       ],
       'sources': [
         # C sources
+        'files/pcre_byte_order.c',
         'files/pcre_compile.c',
         'files/pcre_config.c',
         'files/pcre_dfa_exec.c',
@@ -70,16 +71,15 @@
         'files/pcre_fullinfo.c',
         'files/pcre_get.c',
         'files/pcre_globals.c',
-        'files/pcre_info.c',
         'files/pcre_internal.h',
         'files/pcre_maketables.c',
         'files/pcre_newline.c',
         'files/pcre_ord2utf8.c',
         'files/pcre_refcount.c',
         'files/pcre_scanner.h',
+        'files/pcre_string_utils.c',
         'files/pcre_study.c',
         'files/pcre_tables.c',
-        'files/pcre_try_flipped.c',
         'files/pcre_ucd.c',
         'files/pcre_valid_utf8.c',
         'files/pcre_version.c',
@@ -174,6 +174,7 @@
       'target_name': 'pcretest',
       'type': 'executable',
       'sources': [
+        'files/pcre_printint.c',
         'files/pcretest.c',
       ],
       'dependencies': [

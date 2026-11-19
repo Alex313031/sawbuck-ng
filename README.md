@@ -24,7 +24,7 @@ which can then be resolved and displayed in Sawbuck using a [packaged `dbghelp.d
 **XP, Vista, 7, 8, 8.1, 10 and 11, 32-bit and 64-bit — all from one binary.**
 
 XP support is what `build.bat` produces by default rather than a separate
-build, and comes from [winwrap](https://github.com/Alex313031/winwrap) plus a
+build, and comes from [winwrap](https://github.com/Alex313031/winwrap#readme) plus a
 lowered subsystem version &ndash; see [BUILDING.md](./BUILDING.md#windows-xp)
 for how it works, what it costs and how to build without it. Nothing is given
 up on a modern Windows: each of winwrap's functions asks the running OS for the
