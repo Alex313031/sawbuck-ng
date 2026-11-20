@@ -113,7 +113,7 @@ class LogListView
     MSG_WM_DESTROY(OnDestroy)
     MSG_WM_SETFOCUS(OnSetFocus)
     MSG_WM_KILLFOCUS(OnKillFocus)
-    COMMAND_ID_HANDLER_EX(ID_EDIT_AUTOSIZE_COLUMNS, OnAutoSizeColumns)
+    COMMAND_ID_HANDLER_EX(ID_VIEW_AUTOSIZE_COLUMNS, OnAutoSizeColumns)
     COMMAND_ID_HANDLER_EX(ID_EDIT_COPY, OnCopyCommand)
     COMMAND_ID_HANDLER_EX(ID_COPY_ROW, OnCopyRow)
     COMMAND_ID_HANDLER_EX(ID_EDIT_CLEAR_ALL, OnClearAll)
@@ -138,6 +138,11 @@ class LogListView
   }
 
   void SetLogView(ILogView* log_view);
+
+  // Asks for a file name and writes every row of this view to it as
+  // tab-separated UTF-8 text. Public because the command arrives at the
+  // splitter rather than here -- see LogViewer::OnExportLog.
+  void ExportLog();
 
   virtual void LogViewNewItems();
   virtual void LogViewCleared();

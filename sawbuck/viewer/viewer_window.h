@@ -64,6 +64,7 @@ class ViewerWindow
     COMMAND_ID_HANDLER(ID_LOG_REGISTER_PROVIDERS, OnRegisterProviders)
     COMMAND_ID_HANDLER(ID_LOG_CAPTURE, OnToggleCapture)
     COMMAND_ID_HANDLER(ID_LOG_SYMBOLPATH, OnSymbolPath)
+    COMMAND_ID_HANDLER(ID_RESET_SETTINGS, OnResetSettings)
     // Forward other commands to the client window.
     CHAIN_CLIENT_COMMANDS()
     CHAIN_MSG_MAP(CUpdateUI<ViewerWindow>);
@@ -73,8 +74,9 @@ class ViewerWindow
   BEGIN_UPDATE_UI_MAP(ViewerWindow)
     UPDATE_ELEMENT(ID_FILE_IMPORT, UPDUI_MENUBAR)
     UPDATE_ELEMENT(ID_LOG_CAPTURE, UPDUI_MENUBAR)
+    UPDATE_ELEMENT(ID_LOG_EXPORT, UPDUI_MENUBAR)
     UPDATE_ELEMENT(ID_LOG_FILTER, UPDUI_MENUBAR)
-    UPDATE_ELEMENT(ID_EDIT_AUTOSIZE_COLUMNS, UPDUI_MENUBAR)
+    UPDATE_ELEMENT(ID_VIEW_AUTOSIZE_COLUMNS, UPDUI_MENUBAR)
     UPDATE_ELEMENT(ID_EDIT_CUT, UPDUI_MENUBAR)
     UPDATE_ELEMENT(ID_EDIT_COPY, UPDUI_MENUBAR)
     UPDATE_ELEMENT(ID_EDIT_PASTE, UPDUI_MENUBAR)
@@ -119,6 +121,12 @@ class ViewerWindow
       BOOL& handled);
   LRESULT OnToggleCapture(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
   LRESULT OnSymbolPath(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
+  LRESULT OnResetSettings(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
+
+  // Deletes everything Sawbuck has saved under HKEY_CURRENT_USER. Returns
+  // false only if the key exists and could not be removed; a tree that was
+  // never there is a success, since the result is the same either way.
+  bool DeleteSavedSettings();
   LRESULT OnRegisterProviders(WORD code, LPARAM lparam, HWND wnd,
                               BOOL& handled);
 
@@ -216,6 +224,17 @@ class ViewerWindow
   typedef std::map<int, ILogViewEvents*> EventSinkMap;
   EventSinkMap event_sinks_;
   int next_sink_cookie_;
+
+  // Set by Reset All Settings, and acted on again in the destructor.
+  //
+  // Deleting the key once is not enough: almost everything under it is
+  // written on the way out, and by windows other than this one. This window
+  // saves its placement in OnDestroy, and each list view saves its column
+  // layout in its own -- and children are destroyed after their parent, so
+  // those writes all land after anything this window could do during
+  // shutdown. The destructor runs once the whole window is gone, which is the
+  // first moment nothing is left to write.
+  bool reset_settings_on_exit_;
 
   // The symbol lookup service we provide to the log list view.
   SymbolLookupService symbol_lookup_service_;

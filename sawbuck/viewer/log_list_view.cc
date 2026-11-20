@@ -19,8 +19,11 @@
 #include <string.h>
 
 #include <atlalloc.h>
+#include <atldlgs.h>
 #include <wmistr.h>
 #include <evntrace.h>
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/logging.h"
 #include "base/i18n/time_formatting.h"
 #include "base/macros.h"
@@ -482,6 +485,67 @@ void LogListView::OnCopyRow(UINT code, int id, CWindow window) {
   CopyTextToClipboard(text);
 }
 
+void LogListView::ExportLog() {
+  int num_rows = (log_view_ != NULL) ? log_view_->GetNumRows() : 0;
+  if (num_rows == 0) {
+    ::MessageBox(m_hWnd,
+                 L"There is nothing to export. Capture or import a log first.",
+                 L"Export Log",
+                 MB_OK | MB_ICONINFORMATION);
+    return;
+  }
+
+  // GetSaveFileName, by way of WTL's wrapper, rather than ATL's
+  // CShellFileSaveDialog -- the SDK declares that one only from NTDDI_VISTA
+  // up, which is a floor Sawbuck does not compile at. The import command uses
+  // the same family of dialog.
+  CFileDialog dialog(FALSE,  // Save rather than Open.
+                     L"txt",
+                     L"sawbuck.txt",
+                     OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST,
+                     L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0",
+                     m_hWnd);
+  if (dialog.DoModal(m_hWnd) != IDOK)
+    return;
+
+  // Built in memory and written once. A log big enough for that to matter is
+  // one that is already in memory in a larger form -- these rows exist as
+  // structures the capture path kept, and their text is smaller than that --
+  // so the export adds a fraction rather than a multiple.
+  std::wstring text;
+
+  // A heading row, so the columns can be told apart in a text editor. The
+  // same titles the list view shows, in the same order.
+  for (int col = COL_SEVERITY; col < COL_MAX; ++col) {
+    if (col != COL_SEVERITY)
+      text.push_back(L'\t');
+    text.append(kColumns[col].title);
+  }
+  text.append(L"\r\n");
+
+  // Every row of *this* view, which is the filtered one when a filter is set.
+  // What gets exported is what is on screen, which is the same contract Copy
+  // and Copy Row have.
+  for (int row = 0; row < num_rows; ++row)
+    AppendRowText(row, &text);
+
+  // UTF-8 with a byte order mark. The mark is what makes Notepad read the
+  // file as Unicode instead of as the system code page, and log messages
+  // routinely carry text that does not survive that. AppendRowText has
+  // already used CRLF, which is what a text editor on Windows wants.
+  std::string utf8("\xEF\xBB\xBF");
+  utf8.append(base::WideToUTF8(text));
+
+  base::FilePath path(dialog.m_szFileName);
+  int written = base::WriteFile(path, utf8.data(),
+                                static_cast<int>(utf8.size()));
+  if (written != static_cast<int>(utf8.size())) {
+    std::wstring message =
+        base::StringPrintf(L"Could not write \"%ls\".", path.value().c_str());
+    ::MessageBox(m_hWnd, message.c_str(), L"Export Log", MB_OK | MB_ICONERROR);
+  }
+}
+
 void LogListView::OnSelectAll(UINT code, int id, CWindow window) {
   // Select all items.
   SetItemState(kNoItem, LVIS_SELECTED, LVIS_SELECTED);
@@ -637,7 +701,7 @@ void LogListView::OnHeaderContextMenu(CPoint point) {
   // to its content needs content: LVSCW_AUTOSIZE measures the items, so with
   // no rows it would shrink every column to nothing.
   menu.AppendMenu(log_view_->GetNumRows() ? MF_ENABLED : MF_GRAYED,
-                  ID_EDIT_AUTOSIZE_COLUMNS,
+                  ID_VIEW_AUTOSIZE_COLUMNS,
                   L"Auto &Size Columns\tF12");
 
   // m_hWnd, not the header: TrackPopupMenu sends WM_COMMAND to the window
@@ -763,6 +827,6 @@ void LogListView::UpdateCommandStatus(bool has_focus) {
   update_ui_->UIEnable(ID_EDIT_FIND, has_focus);
   update_ui_->UIEnable(ID_EDIT_FIND_NEXT, has_focus &&
                        !find_params_.expression_.empty());
-  update_ui_->UIEnable(ID_EDIT_AUTOSIZE_COLUMNS,
+  update_ui_->UIEnable(ID_VIEW_AUTOSIZE_COLUMNS,
                        has_focus && log_view_->GetNumRows());
 }

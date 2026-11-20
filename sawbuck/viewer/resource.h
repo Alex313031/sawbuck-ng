@@ -11,10 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #ifndef SAWBUCK_VIEWER_RESOURCE_H_
 #define SAWBUCK_VIEWER_RESOURCE_H_
 
-//{{NO_DEPENDENCIES}}  // NOLINT
+// {{NO_DEPENDENCIES}}  // NOLINT
 // Microsoft Visual C++ generated include file.
 // Used by viewer.rc
 
@@ -79,7 +80,7 @@
 // the menu item and the F3 accelerator compiled to WTL's 0xE128, while every
 // .cc saw atlres.h first and resource.h last and so used 4010. The command
 // would have been posted with an ID no handler claimed.
-#define ID_EDIT_AUTOSIZE_COLUMNS        4011
+#define ID_VIEW_AUTOSIZE_COLUMNS        4011
 #define ID_INCLUDE_COLUMN               4012
 #define ID_EXCLUDE_COLUMN               4013
 // List view context menu: copy the single row the menu was opened over,
@@ -88,13 +89,14 @@
 // Log menu: write the default provider registrations, for installs that
 // did not come from the MSI.
 #define ID_LOG_REGISTER_PROVIDERS       4015
+#define ID_LOG_EXPORT                   4016
+#define ID_RESET_SETTINGS               4017
 
 // Next default values for new objects
-//
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        109
-#define _APS_NEXT_COMMAND_VALUE         4016
+#define _APS_NEXT_COMMAND_VALUE         4018
 #define _APS_NEXT_CONTROL_VALUE         1023
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

@@ -96,6 +96,15 @@ LRESULT LogViewer::OnCommand(UINT msg,
   return ::SendMessage(window, msg, wparam, lparam);
 }
 
+void LogViewer::OnExportLog(UINT code, int id, CWindow window) {
+  // Handled here rather than left to OnCommand below, which forwards to
+  // whichever pane has focus. Exporting is always about the log, and the
+  // stack trace pane has no handler for this id -- so with focus there, the
+  // command would arrive somewhere that ignores it and the menu item would
+  // appear to do nothing, depending on where the user last clicked.
+  log_list_view_.ExportLog();
+}
+
 void LogViewer::OnLogFilter(UINT code, int id, CWindow window) {
   FilterDialog dialog;
 

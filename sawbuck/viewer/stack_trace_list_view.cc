@@ -281,7 +281,7 @@ void StackTraceListView::UpdateCommandStatus(bool has_focus) {
 
   update_ui_->UIEnable(ID_EDIT_COPY, has_focus && has_selection);
   update_ui_->UIEnable(ID_EDIT_SELECT_ALL, has_focus);
-  update_ui_->UIEnable(ID_EDIT_AUTOSIZE_COLUMNS, has_focus && trace_.size());
+  update_ui_->UIEnable(ID_VIEW_AUTOSIZE_COLUMNS, has_focus && trace_.size());
 }
 
 void StackTraceListView::OnSetFocus(CWindow window) {

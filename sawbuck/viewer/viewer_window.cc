@@ -29,6 +29,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/win/event_trace_consumer.h"
+#include "base/win/registry.h"
 #include "base/win/windows_version.h"
 #include "sawbuck/viewer/const_config.h"
 #include "sawbuck/viewer/preferences.h"
@@ -157,7 +158,8 @@ ViewerWindow::ViewerWindow()
                                       base::Unretained(this))),
        update_status_task_pending_(false),
        log_consumer_thread_("Event log consumer"),
-       kernel_consumer_thread_("Kernel log consumer") {
+       kernel_consumer_thread_("Kernel log consumer"),
+       reset_settings_on_exit_(false) {
   ui_loop_ = base::MessageLoop::current();
   DCHECK(ui_loop_ != NULL);
 
@@ -181,6 +183,12 @@ ViewerWindow::ViewerWindow()
 ViewerWindow::~ViewerWindow() {
   // Last resort..
   StopCapturing();
+
+  // Now, and not when the command was given: see reset_settings_on_exit_.
+  // Everything that writes to the key has finished by the time a window
+  // object is being destroyed.
+  if (reset_settings_on_exit_ && !DeleteSavedSettings())
+    LOG(ERROR) << "Could not delete the saved settings on exit.";
 
   symbol_lookup_worker_.Stop();
 
@@ -808,6 +816,70 @@ class SymbolPathDialog: public CDialogImpl<SymbolPathDialog> {
 
 }  // namespace
 
+bool ViewerWindow::DeleteSavedSettings() {
+  // Opened with an empty subkey, which gives a second handle to HKCU itself,
+  // so that the whole of config::kSettingsKey can be named in one call rather
+  // than split into a parent path and a leaf here.
+  base::win::RegKey key;
+  LONG result = key.Open(HKEY_CURRENT_USER, L"", KEY_WRITE);
+  if (result != ERROR_SUCCESS)
+    return false;
+
+  // Recursive -- base::win::RegKey::DeleteKey walks the subkeys itself, which
+  // matters because Levels sits underneath.
+  result = key.DeleteKey(config::kSettingsKey);
+
+  // Nothing there is the same outcome as having removed it. That is the usual
+  // case for a second call: the one in the destructor runs after the handler
+  // has already deleted the tree, and only has anything to do because the
+  // windows wrote it back on their way out.
+  return result == ERROR_SUCCESS || result == ERROR_FILE_NOT_FOUND;
+}
+
+LRESULT ViewerWindow::OnResetSettings(WORD code,
+                                      LPARAM lparam,
+                                      HWND wnd,
+                                      BOOL& handled) {
+  const wchar_t kPrompt[] =
+      L"This clears everything Sawbuck has remembered: the window position "
+      L"and size, the column layouts for all three lists, the symbol path, "
+      L"the filters, and the per-provider log levels.\n"
+      L"\n"
+      L"Provider registrations are left alone. Those live under "
+      L"HKEY_LOCAL_MACHINE and belong to the installer, not to these "
+      L"settings.\n"
+      L"\n"
+      L"Reset them now?";
+  if (::MessageBox(m_hWnd, kPrompt, L"Reset All Settings",
+                   MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES) {
+    return 0;
+  }
+
+  if (!DeleteSavedSettings()) {
+    ::MessageBox(m_hWnd,
+                 L"Could not delete the saved settings.",
+                 L"Reset All Settings",
+                 MB_OK | MB_ICONERROR);
+    return 0;
+  }
+
+  // Again on the way out, because this window and the list views all write
+  // their state back as they are destroyed -- see reset_settings_on_exit_.
+  // Without the second pass, closing Sawbuck would immediately recreate most
+  // of what was just removed.
+  reset_settings_on_exit_ = true;
+
+  ::MessageBox(m_hWnd,
+               L"Settings have been reset.\n"
+               L"\n"
+               L"The window and columns keep their current layout for this "
+               L"session, and start from the defaults the next time Sawbuck "
+               L"runs.",
+               L"Reset All Settings",
+               MB_OK | MB_ICONINFORMATION);
+  return 0;
+}
+
 LRESULT ViewerWindow::OnSymbolPath(WORD code,
                                    LPARAM lparam,
                                    HWND wnd,
@@ -825,6 +897,11 @@ LRESULT ViewerWindow::OnSymbolPath(WORD code,
 }
 
 BOOL ViewerWindow::OnIdle() {
+  // Nothing to export with no rows. This is the unfiltered count, so a
+  // filter that hides everything still leaves the item enabled; the
+  // handler says so rather than the menu going quiet.
+  UIEnable(ID_LOG_EXPORT, GetNumRows() > 0);
+
   UIUpdateMenuBar();
   UIUpdateStatusBar();
 
