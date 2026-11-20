@@ -2,10 +2,10 @@ Windows Registry Editor Version 5.00
 
 ; Enables TLS 1.1 and 1.2 by default on the Windows versions that have them but
 ; do not use them unprompted, so that Sawbuck's https symbol servers work
-; there. Windows 8 and later already do all of this; importing it there is a
-; no-op.
+; there. Windows 8.1 and later already do all of this; importing it there is
+; a no-op.
 ;
-; Every Windows from XP SP3 up can get to TLS 1.2. None of them below 8 is
+; Every Windows from XP SP3 up can get to TLS 1.2. None of them below 8.1 is
 ; there out of the box, and the gap is an update plus these keys.
 ;
 ; The keys are identical on every version. What differs is the update:
@@ -23,11 +23,14 @@ Windows Registry Editor Version 5.00
 ;                             sharing the 6.0.6002 servicing branch with
 ;                             Server 2008 SP2.
 ;
-;   7, Server 2008 R2         TLS 1.2 is already in schannel but off for
-;                             client use, and WinHTTP ignores it until
-;                             KB3140245 is installed -- that update is what
-;                             teaches WinHTTP to read DefaultSecureProtocols
-;                             at all. Check with:
+;   7, Server 2008 R2         TLS 1.2 is already in schannel -- on 8 it is
+;   8, Server 2012            even enabled by default there -- but WinHTTP
+;                             ignores it until KB3140245 is installed. That
+;                             update is what teaches WinHTTP to read
+;                             DefaultSecureProtocols at all, and it is
+;                             offered for 8 and Server 2012 as well as for
+;                             7, which is why the line is drawn at 8.1 and
+;                             not at 8. Check with:
 ;                               wmic qfe | findstr 3140245
 ;
 ; So this file is the switch, not the installation. If the corresponding
@@ -46,7 +49,7 @@ Windows Registry Editor Version 5.00
 ;
 ; Note that Sawbuck does not need any of this. InitSymbolPath only fabricates
 ; a symbol path when there is no saved preference and no _NT_SYMBOL_PATH, and
-; it picks http below Windows 8 precisely so that symbols work on these
+; it picks http below Windows 8.1 precisely so that symbols work on these
 ; versions untouched. Its version check is about what it can know, not about
 ; what the machine can do -- it has no way to tell that this has been applied.
 ;

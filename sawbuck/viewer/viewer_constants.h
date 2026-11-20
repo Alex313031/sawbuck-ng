@@ -47,8 +47,8 @@ const wchar_t kHelpUrl[] =
     L"https://github.com/Alex313031/sawbuck-ng/blob/main/docs/USAGE.md";
 
 // Microsoft's public symbol server. See InitSymbolPath for why there are two
-// of each: http below Windows 8, where TLS 1.2 is not on by default, and
-// https from 8 up.
+// of each: http below Windows 8.1, where an untouched install does not
+// negotiate TLS 1.2 for a caller that did not ask for it, and https above.
 const wchar_t kMicrosoftSymSrvHttp[] =
     L"http://msdl.microsoft.com/download/symbols";
 const wchar_t kMicrosoftSymSrvHttps[] =
@@ -61,8 +61,9 @@ const wchar_t kChromeSymSrvHttps[] =
     L"https://chromium-browser-symsrv.commondatastorage.googleapis.com";
 
 // Where Windows records whether TLS 1.2 may be used, read by
-// IsTls12EnabledForWinHttp below Windows 8 to decide whether an https symbol
-// server is worth offering. Read-only, and both are readable by any user.
+// IsTls12EnabledForWinHttp below Windows 8.1 to decide whether an https
+// symbol server is worth offering. Read-only, and both are readable by any
+// user.
 //
 // The schannel key is under SYSTEM, which WOW64 does not redirect, so there is
 // one copy of it whatever the architecture of the process asking. The WinHttp

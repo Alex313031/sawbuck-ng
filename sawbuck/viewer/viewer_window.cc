@@ -53,22 +53,24 @@ const pcrecpp::RE kFileRe("\\[[^\\]]*\\:([^:]+)\\((\\d+)\\)\\].(.*\\w).*",
 // True if this machine looks configured to negotiate TLS 1.2 through WinHTTP,
 // which is what symsrv.dll fetches symbols with.
 //
-// Only meaningful below Windows 8, where the answer is yes without asking.
+// Only meaningful below Windows 8.1, where the answer is yes without asking.
 // Below that it is a yes only if someone has done the work -- the update for
 // their version, plus these registry values -- and this is how to find out
 // without attempting a fetch and waiting for it to fail. See
-// tmp/enable_tls12.reg, which is the other half of this.
+// assets/enable_tls12.reg, which is the other half of this.
 //
 // Read-only and unprivileged: both keys are world-readable, so this costs two
 // RegOpenKeyEx calls and asks for nothing a normal user does not have.
 //
 // What it cannot establish, and the reason the caller treats a yes as "worth
 // trying" rather than a guarantee: whether this version's WinHTTP honours
-// DefaultSecureProtocols at all. That is documented for Windows 7 behind
-// KB3140245 and for 8 and later; on XP and Vista the schannel side is
-// reachable through KB4019276 but whether WinHTTP reads this value there has
-// not been confirmed on a real machine. A false yes costs symbol resolution
-// and nothing else, and is correctable from the Symbol Path dialog.
+// DefaultSecureProtocols at all. KB3140245 is what adds that, and it is
+// offered for Windows 8 and Server 2012 as well as for 7 -- so a stock 8 is
+// in the same position as a stock 7. On XP and Vista the schannel side is
+// reachable through KB4019276, but whether WinHTTP reads this value there
+// has not been confirmed on a real machine. A false yes costs symbol
+// resolution and nothing else, and is correctable from the Symbol Path
+// dialog.
 bool IsTls12EnabledForWinHttp() {
   CRegKey schannel;
   if (schannel.Open(HKEY_LOCAL_MACHINE, kTls12ClientKey, KEY_READ) !=
@@ -80,7 +82,7 @@ bool IsTls12EnabledForWinHttp() {
   // being careful about rather than treating them as a pair.
   //
   // DisabledByDefault absent means "use the system default", and below
-  // Windows 8 that default is 1 for TLS 1.2 -- available, but only to a
+  // Windows 8.1 that default is 1 for TLS 1.2 -- available, but only to a
   // caller that asks for it by name. symsrv does not, so absent is a no.
   DWORD disabled_by_default = 1;
   if (schannel.QueryDWORDValue(kDisabledByDefaultValue,
@@ -1194,18 +1196,29 @@ void ViewerWindow::InitSymbolPath() {
     // of these servers require TLS 1.2 now, so this is about reachability
     // rather than preference.
     //
-    // Windows 8 is where TLS 1.2 is on by default, which is not the same as
-    // where it is possible: every Windows from XP SP3 up can do it, given the
-    // update for its version -- KB4019276 for the XP/POSReady and Server 2008
-    // SP2 family, Vista SP2 behind KB4493471, KB3140245 on 7 -- plus the
-    // registry values. So below 8, ask instead of assuming: the short-circuit
-    // means the probe only runs where the answer is in doubt.
+    // Windows 8.1 is where an untouched install negotiates TLS 1.2 for a
+    // caller that does not ask for it by name, which symsrv does not. That is
+    // a different line from where TLS 1.2 is *possible*: every Windows from
+    // XP SP3 up can do it, given the update for its version -- KB4019276 for
+    // the XP/POSReady and Server 2008 SP2 family, Vista SP2 behind KB4493471,
+    // KB3140245 for 7, 8 and Server 2012 -- plus the registry values.
+    //
+    // 8.1 rather than 8 because KB3140245 is offered for Windows 8 too: its
+    // WinHTTP needs the same update before DefaultSecureProtocols means
+    // anything, so a stock 8 is in the same position as a stock 7. The line
+    // has to be drawn at what a bare install does with nothing but its
+    // service pack -- which is what a VM kept around for debugging on legacy
+    // Windows actually is, and the only safe assumption about anyone else's
+    // machine.
+    //
+    // So below 8.1, ask instead of assuming. The short-circuit means the
+    // probe only runs where the answer is in doubt.
     //
     // A no is always safe. Both servers still answer over plain http with no
     // redirect, so http works on every version either way; it is a wrong yes
     // that costs something, and only symbol resolution.
     const bool use_https =
-        base::win::GetVersion() >= base::win::VERSION_WIN8 ||
+        base::win::GetVersion() >= base::win::VERSION_WIN8_1 ||
         IsTls12EnabledForWinHttp();
 
     // Pointers rather than strings: these feed %ls directly below, and
