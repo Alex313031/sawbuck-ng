@@ -53,15 +53,16 @@
 #    above added '/third_party/libxml/' to .gitignore and no matching DEPS
 #    entry, which is presumably why nobody noticed.
 #
-# 4. third_party/winwrap tracks a branch rather than a commit, which is the
-#    one exception to everything said above about exact pinning. It is our own
-#    repository, not a third-party pin; it is under active development for the
-#    XP work; and there is no known-good revision to reproduce against yet.
+# 4. third_party/winwrap is our own repository rather than a third-party pin,
+#    and it tracked 'main' while the XP work was still landing. It is pinned
+#    now, so this file is once again fully pinned and a sync is reproducible.
 #
-#    The cost is real: a sync is no longer reproducible, so two checkouts of
-#    the same sawbuck-ng commit can end up with different winwrap. Swap 'main'
-#    for a SHA once XP support works, and this file goes back to being fully
-#    pinned.
+#    Pinned deliberately, and not only for reproducibility: winwrap's public
+#    surface can move. 0.3.8 reorganized it -- winwrap.h stopped being on a
+#    consumer's include path, in favour of src/public/winwrap_public.h -- so a
+#    floating 'main' is a build that can break without a commit here. Roll it
+#    the way every other entry below is rolled: by hand, to a release tag's
+#    commit, after checking the build.
 #
 # use_relative_paths makes every path below relative to *this file*, so the
 # repository root is the source root and GYP's depth is '.'. The old file
@@ -167,12 +168,9 @@ vars = {
   'gyp_revision': '1a622e23d0c344c55ccac285cab60c2ab991ac9a',    # svn r1919
   'gyp_next_revision': 'b5b1525b5b834559d9b84d4eb48117adc3dedb23',  # v0.22.4
 
-  # A branch, not a commit -- see note 4 above. The tip when this entry was
-  # added (2026-11-16) was
-  # 87cbeb359cbd3df3213df38d10e6b13f017a7d52  # 2026-11-13, "gn format BUILD.gn"
-  # so that is the revision to fall back to if a sync picks up a main that
-  # does not build.
-  'winwrap_revision': 'main',
+  # See note 4 above. Roll this by hand, to the commit a winwrap release tag
+  # points at, after checking Sawbuck still builds and runs against it.
+  'winwrap_revision': 'a3a83dea761fbee1425304fd93339cb0ec6dafe7',  # 0.3.8
 }
 
 # Only these hosts are allowed for dependencies in this DEPS file.

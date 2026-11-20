@@ -42,7 +42,7 @@ run the system's own code throughout.
 
 XP last worked in pre-0.6 builds from early 2010, before the project's first
 tagged release, so no published Sawbuck binary has run on it since. This one
-does, and without pinning an old toolset: it is built against the current
+does, and without pinning an old toolset: it is built against a current
 Windows SDK with Visual Studio 2022.
 
 ### License

@@ -6,18 +6,18 @@ Windows SDK and ETW.
 
 ### Requirements
 
- - **Windows 10 or 11.** Building on the OS you intend to run on is not
+ - **Windows 7 SP1 - 11** Building on the OS you intend to run on is not
    required, and there is nothing to choose: the default build runs on XP
    through 11 from one binary. See [Windows XP](#windows-xp) for how, and for
    how to build without that.
- - **Visual Studio 2022** (Community is fine), with two pieces installed:
+ - **[Visual Studio 2022](https://aka.ms/vs/17/release/vs_community.exe)**, with two pieces installed:
    - the **Desktop development with C++** workload, and
    - the **C++ ATL for latest v143 build tools** individual component.
 
    ATL is not part of the workload by default and has to be ticked
    separately. Twenty-three files in `sawbuck/` include an `atl*.h`, so the
    build fails early without it.
- - **[depot_tools](https://chromium.googlesource.com/chromium/tools/depot_tools.git)**
+ - **[depot_tools](https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html#_setting_up)**
    on `PATH`, for `gclient`. It also supplies the `python3` that the DEPS hooks
    invoke.
  - **Python 3** on `PATH` as `python`. The GYP actions call the interpreter by
