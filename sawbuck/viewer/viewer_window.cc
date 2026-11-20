@@ -17,6 +17,11 @@
 
 #include <string.h>
 
+// Named because WIN32_LEAN_AND_MEAN, which build/common.gypi sets for
+// the whole tree, is what keeps shellapi.h out of windows.h. Without
+// this, ShellExecute below is undeclared.
+#include <shellapi.h>
+
 #include "pcrecpp.h"  // NOLINT
 #include "base/bind.h"
 #include "base/environment.h"
@@ -880,6 +885,31 @@ LRESULT ViewerWindow::OnResetSettings(WORD code,
   return 0;
 }
 
+LRESULT ViewerWindow::OnHelp(WORD code,
+                             LPARAM lparam,
+                             HWND wnd,
+                             BOOL& handled) {
+  // A NULL verb, which runs whatever the user has registered as the default
+  // for an https URL, rather than hardcoding "open" -- the two are usually
+  // the same and are not required to be.
+  //
+  // The return is an HINSTANCE for historical reasons and is not a handle:
+  // anything at or above 33 is success, and anything at or below 32 is an
+  // error code wearing a pointer's type.
+  HINSTANCE result =
+      ::ShellExecute(m_hWnd, NULL, kHelpUrl, NULL, NULL, SW_SHOWNORMAL);
+  if (reinterpret_cast<INT_PTR>(result) <= 32) {
+    // The address is in the message so it can still be copied out by hand,
+    // which is the only useful thing left when there is no browser to hand
+    // it to.
+    std::wstring message = base::StringPrintf(
+        L"Could not open a web browser.\n\n%ls", kHelpUrl);
+    ::MessageBox(m_hWnd, message.c_str(), L"Help", MB_OK | MB_ICONERROR);
+  }
+
+  return 0;
+}
+
 LRESULT ViewerWindow::OnSymbolPath(WORD code,
                                    LPARAM lparam,
                                    HWND wnd,
@@ -1174,15 +1204,16 @@ void ViewerWindow::InitSymbolPath() {
     // A no is always safe. Both servers still answer over plain http with no
     // redirect, so http works on every version either way; it is a wrong yes
     // that costs something, and only symbol resolution.
-    bool use_https = base::win::GetVersion() >= base::win::VERSION_WIN8 ||
-                     IsTls12EnabledForWinHttp();
+    const bool use_https =
+        base::win::GetVersion() >= base::win::VERSION_WIN8 ||
+        IsTls12EnabledForWinHttp();
 
     // Pointers rather than strings: these feed %ls directly below, and
     // base::StringPrintf is variadic, so a std::wstring would have to be
     // .c_str()'d anyway and a std::string could not be used at all.
-    const wchar_t* microsoft_sym_srv =
+    const wchar_t* const microsoft_sym_srv =
         use_https ? kMicrosoftSymSrvHttps : kMicrosoftSymSrvHttp;
-    const wchar_t* chrome_sym_srv =
+    const wchar_t* const chrome_sym_srv =
         use_https ? kChromeSymSrvHttps : kChromeSymSrvHttp;
 
     symbol_path_ =

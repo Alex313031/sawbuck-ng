@@ -60,6 +60,7 @@ class ViewerWindow
     COMMAND_ID_HANDLER(ID_FILE_IMPORT, OnImport)
     COMMAND_ID_HANDLER(ID_FILE_EXIT, OnExit)
     COMMAND_ID_HANDLER(ID_APP_ABOUT, OnAbout)
+    COMMAND_ID_HANDLER(ID_HELP, OnHelp)
     COMMAND_ID_HANDLER(ID_LOG_CONFIGUREPROVIDERS, OnConfigureProviders)
     COMMAND_ID_HANDLER(ID_LOG_REGISTER_PROVIDERS, OnRegisterProviders)
     COMMAND_ID_HANDLER(ID_LOG_CAPTURE, OnToggleCapture)
@@ -122,6 +123,7 @@ class ViewerWindow
   LRESULT OnToggleCapture(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
   LRESULT OnSymbolPath(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
   LRESULT OnResetSettings(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
+  LRESULT OnHelp(WORD code, LPARAM lparam, HWND wnd, BOOL& handled);
 
   // Deletes everything Sawbuck has saved under HKEY_CURRENT_USER. Returns
   // false only if the key exists and could not be removed; a tree that was

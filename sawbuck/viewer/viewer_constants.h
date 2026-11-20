@@ -40,6 +40,12 @@ const wchar_t kWindowTitle[] = L"Sawbuck Log Viewer";
 // Session name title
 const wchar_t kSessionName[] = L"Sawbuck Log Session";
 
+// What Help opens. The document in the repository rather than a copy shipped
+// beside the executable: it is then current for whoever reads it, and the
+// portable build stays four files.
+const wchar_t kHelpUrl[] =
+    L"https://github.com/Alex313031/sawbuck-ng/blob/main/docs/USAGE.md";
+
 // Microsoft's public symbol server. See InitSymbolPath for why there are two
 // of each: http below Windows 8, where TLS 1.2 is not on by default, and
 // https from 8 up.
