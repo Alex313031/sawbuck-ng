@@ -1,4 +1,4 @@
-// Copyright 2009 Google Inc.
+// Copyright 2026 Alex313031 and Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,27 +31,30 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION SAWDUST_MAJOR,SAWDUST_MINOR,SAWDUST_BUILD,SAWDUST_PATCH
  PRODUCTVERSION SAWDUST_MAJOR,SAWDUST_MINOR,SAWDUST_BUILD,SAWDUST_PATCH
- FILEFLAGSMASK 0x17L
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK // 0x0000003F
 #ifdef _DEBUG
- FILEFLAGS 0x1L
+ FILEFLAGS VS_FF_DEBUG // 0x00000001L
 #else
- FILEFLAGS 0x0L
+ FILEFLAGS 0x00000000L // VS_FF_RELEASE
 #endif
- FILEOS 0x4L
- FILETYPE 0x1L
- FILESUBTYPE 0x0L
+ FILEOS VOS_NT_WINDOWS32 // 0x00040004L
+ FILETYPE VFT_APP // 0x00000001L
+ FILESUBTYPE VFT2_UNKNOWN // 0x00000000L
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904b0"
+        BLOCK "040904B0" // 0x0409 = US English, 0x04B0 = Unicode (1200)
         BEGIN
-            VALUE "FileDescription", "Sawdust Trace Harvester"
-            VALUE "FileVersion", SAWDUST_VER_STR
-            VALUE "InternalName", "Sawdust"
-            VALUE "LegalCopyright", "Copyright (C) Google Inc 2011"
+            VALUE "FileDescription",  "Sawdust Trace Harvester"
+            VALUE "FileVersion",      SAWDUST_VER_STR
+            VALUE "InternalName",     "sawdust"
+            VALUE "LegalCopyright",   "Copyright (c) 2026 Alex313031 and Google Inc"
+            VALUE "LegalTrademarks",  "Apache 2.0 License"
+            VALUE "CompanyName",      "Alex313031"
             VALUE "OriginalFilename", "Sawdust.exe"
-            VALUE "ProductName", "Sawdust Trace Harvester"
-            VALUE "ProductVersion", SAWDUST_VER_STR
+            VALUE "ProductName",      "Sawdust Trace Harvester"
+            VALUE "ProductVersion",   SAWDUST_VER_STR
+            VALUE "Comments",         "https://github.com/Alex313031/sawbuck-ng" // Github repo
         END
     END
     BLOCK "VarFileInfo"
