@@ -911,8 +911,8 @@ LRESULT ViewerWindow::OnHelp(WORD code,
   // error code wearing a pointer's type.
   HINSTANCE result = ::ShellExecute(m_hWnd, NULL, L"explorer.exe", kHelpUrl,
                                     NULL, SW_SHOWNORMAL);
-  INT_PTR code = reinterpret_cast<INT_PTR>(result);
-  if (code <= 32) {
+  INT_PTR shell_result = reinterpret_cast<INT_PTR>(result);
+  if (shell_result <= 32) {
     // The code and the address both go in the message: the first is the only
     // thing that says why, and the second is the only useful thing left when
     // there is no browser to hand it to.
@@ -920,7 +920,7 @@ LRESULT ViewerWindow::OnHelp(WORD code,
     // tree uses. Every value that reaches here is 0 to 32.
     std::wstring message = base::StringPrintf(
         L"Could not open a web browser (error %d).\n\n%ls",
-        static_cast<int>(code), kHelpUrl);
+        static_cast<int>(shell_result), kHelpUrl);
     ::MessageBox(m_hWnd, message.c_str(), L"Help", MB_OK | MB_ICONERROR);
   }
 
