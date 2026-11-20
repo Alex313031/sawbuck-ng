@@ -120,6 +120,7 @@ class LogListView
     COMMAND_ID_HANDLER_EX(ID_EDIT_SELECT_ALL, OnSelectAll)
     COMMAND_ID_HANDLER_EX(ID_EDIT_FIND, OnFind)
     COMMAND_ID_HANDLER_EX(ID_EDIT_FIND_NEXT, OnFindNext)
+    COMMAND_ID_HANDLER_EX(ID_EDIT_FIND_PREVIOUS, OnFindPrevious)
     COMMAND_ID_HANDLER_EX(ID_SET_TIME_ZERO, OnSetBaseTime)
     COMMAND_ID_HANDLER_EX(ID_RESET_BASE_TIME, OnResetBaseTime)
     REFLECTED_NOTIFY_CODE_HANDLER_EX(LVN_GETDISPINFO, OnGetDispInfo)
@@ -195,6 +196,7 @@ class LogListView
   void OnHeaderContextMenu(CPoint point);
   void OnFind(UINT code, int id, CWindow window);
   void OnFindNext(UINT code, int id, CWindow window);
+  void OnFindPrevious(UINT code, int id, CWindow window);
   void OnAutoSizeColumns(UINT code, int id, CWindow window);
 
   // Context menu command handlers.
@@ -206,9 +208,14 @@ class LogListView
   // @param has_focus true iff this window has the focus.
   void UpdateCommandStatus(bool has_focus);
 
-  // Finds the next item matching with the current find parameters.
-  // See |find_params_|.
-  void FindNext();
+  // Finds the next item matching the current find parameters, searching
+  // down the list if |down| and up it otherwise. See |find_params_|.
+  //
+  // The direction is a parameter rather than read from find_params_ here,
+  // because Find Previous is "the other way from whatever the dialog is set
+  // to" and must not change that setting -- F3 and Shift+F3 are relative to
+  // the dialog, not absolute.
+  void Find(bool down);
 
   // To help unittest mocking.
   virtual BOOL DeleteAllItems() {

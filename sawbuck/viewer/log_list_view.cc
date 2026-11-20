@@ -714,13 +714,18 @@ void LogListView::OnFind(UINT code, int id, CWindow window) {
   FindDialog find(find_params_);
   if (find.DoModal(m_hWnd) == IDOK) {
     find_params_ = find.find_params();
-    FindNext();
+    Find(find_params_.direction_down_);
   }
 }
 
 void LogListView::OnFindNext(UINT code, int id, CWindow window) {
   if (!find_params_.expression_.empty())
-    FindNext();
+    Find(find_params_.direction_down_);
+}
+
+void LogListView::OnFindPrevious(UINT code, int id, CWindow window) {
+  if (!find_params_.expression_.empty())
+    Find(!find_params_.direction_down_);
 }
 
 void LogListView::OnAutoSizeColumns(UINT code, int id, CWindow window) {
@@ -730,14 +735,13 @@ void LogListView::OnAutoSizeColumns(UINT code, int id, CWindow window) {
     SetColumnWidth(i, LVSCW_AUTOSIZE);
 }
 
-void LogListView::FindNext() {
+void LogListView::Find(bool down) {
   pcrecpp::RE_Options options = PCRE_UTF8;
   options.set_caseless(!find_params_.match_case_);
   pcrecpp::RE expression(find_params_.expression_, options);
 
   int start = GetNextItem(-1, LVIS_FOCUSED);
   int num_rows = log_view_->GetNumRows();
-  bool down = find_params_.direction_down_;
   int i = down ? start + 1 : start - 1;
   if (i < 0)
     i = 0;  // in case start == -1.
@@ -826,6 +830,8 @@ void LogListView::UpdateCommandStatus(bool has_focus) {
   update_ui_->UIEnable(ID_EDIT_CLEAR_ALL, has_focus);
   update_ui_->UIEnable(ID_EDIT_FIND, has_focus);
   update_ui_->UIEnable(ID_EDIT_FIND_NEXT, has_focus &&
+                       !find_params_.expression_.empty());
+  update_ui_->UIEnable(ID_EDIT_FIND_PREVIOUS, has_focus &&
                        !find_params_.expression_.empty());
   update_ui_->UIEnable(ID_VIEW_AUTOSIZE_COLUMNS,
                        has_focus && log_view_->GetNumRows());

@@ -91,12 +91,15 @@
 #define ID_LOG_REGISTER_PROVIDERS       4015
 #define ID_LOG_EXPORT                   4016
 #define ID_RESET_SETTINGS               4017
+// Find Previous. There is no standard id for it in atlres.h the way there
+// is for Find Next (ID_EDIT_REPEAT), so it gets a local one.
+#define ID_EDIT_FIND_PREVIOUS           4018
 
 // Next default values for new objects
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        109
-#define _APS_NEXT_COMMAND_VALUE         4018
+#define _APS_NEXT_COMMAND_VALUE         4019
 #define _APS_NEXT_CONTROL_VALUE         1023
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
