@@ -891,21 +891,36 @@ LRESULT ViewerWindow::OnHelp(WORD code,
                              LPARAM lparam,
                              HWND wnd,
                              BOOL& handled) {
-  // A NULL verb, which runs whatever the user has registered as the default
-  // for an https URL, rather than hardcoding "open" -- the two are usually
-  // the same and are not required to be.
+  // Handed to explorer.exe rather than opened directly, because Sawbuck runs
+  // elevated: the manifest asks for requireAdministrator, since controlling
+  // an ETW session needs it, and viewer.gyp sets UACExecutionLevel to match.
+  //
+  // A process started from an elevated parent inherits the elevated token,
+  // and a browser handed a URL that way either refuses to run or opens
+  // nothing -- while ShellExecute reports success either way, so the failure
+  // is completely silent. Passing the URL as explorer.exe's argument gets it
+  // opened by the shell instead, which is running as the logged-on user:
+  // explorer sees an instance is already up and forwards the request to it
+  // rather than starting a second one.
+  //
+  // A NULL verb, so whatever is registered as the default for the file type
+  // is what runs, rather than hardcoding "open".
   //
   // The return is an HINSTANCE for historical reasons and is not a handle:
   // anything at or above 33 is success, and anything at or below 32 is an
   // error code wearing a pointer's type.
-  HINSTANCE result =
-      ::ShellExecute(m_hWnd, NULL, kHelpUrl, NULL, NULL, SW_SHOWNORMAL);
-  if (reinterpret_cast<INT_PTR>(result) <= 32) {
-    // The address is in the message so it can still be copied out by hand,
-    // which is the only useful thing left when there is no browser to hand
-    // it to.
+  HINSTANCE result = ::ShellExecute(m_hWnd, NULL, L"explorer.exe", kHelpUrl,
+                                    NULL, SW_SHOWNORMAL);
+  INT_PTR code = reinterpret_cast<INT_PTR>(result);
+  if (code <= 32) {
+    // The code and the address both go in the message: the first is the only
+    // thing that says why, and the second is the only useful thing left when
+    // there is no browser to hand it to.
+    // Cast rather than %Id, which is an MSVC spelling nothing else in this
+    // tree uses. Every value that reaches here is 0 to 32.
     std::wstring message = base::StringPrintf(
-        L"Could not open a web browser.\n\n%ls", kHelpUrl);
+        L"Could not open a web browser (error %d).\n\n%ls",
+        static_cast<int>(code), kHelpUrl);
     ::MessageBox(m_hWnd, message.c_str(), L"Help", MB_OK | MB_ICONERROR);
   }
 
