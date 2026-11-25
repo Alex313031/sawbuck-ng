@@ -91,9 +91,11 @@
 #define ID_LOG_REGISTER_PROVIDERS       4015
 #define ID_LOG_EXPORT                   4016
 #define ID_RESET_SETTINGS               4017
-// Find Previous. There is no standard id for it in atlres.h the way there
-// is for Find Next (ID_EDIT_REPEAT), so it gets a local one.
-#define ID_EDIT_FIND_PREVIOUS           4018
+// 4018 was ID_EDIT_FIND_PREVIOUS, which comes from WTL's atlres.h for the
+// same reason as 4010 above: 9.1 defines it (0xE12D) and does not guard the
+// name. With a second definition here the menu item and the Shift+F3
+// accelerator in viewer.rc compiled to WTL's value while the handlers in the
+// .cc files used 4018, on top of a C4005 / RC4005 warning per file.
 // Show standard win32 list view cell grid outlines.
 #define ID_SHOW_LISTVIEW_CELLS          4019
 
