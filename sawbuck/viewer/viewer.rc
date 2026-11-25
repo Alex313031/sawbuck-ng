@@ -118,16 +118,16 @@ END
 // Dialog
 //
 
-IDD_ABOUT DIALOGEX 0, 0, 179, 92
+IDD_ABOUT DIALOGEX 0, 0, 180, 92
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About Sawbuck"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     ICON            IDR_MAIN_FRAME,IDC_STATIC,7,6,21,20
-    LTEXT           "Sawbuck: a quick and dirty construction used to hold rough wood so that it may be sawn into logs of length usable in a stove or fireplace. Also, a tool for viewing Chromium logs.",IDC_STATIC,37,6,128,43
+    LTEXT           "Sawbuck: a quick and dirty construction used to hold rough wood so that it may be sawn into logs of length usable in a stove or fireplace. Also, a tool for viewing Chromium logs.",IDC_STATIC,37,6,136,43
     LTEXT           "Version:",IDC_STATIC,37,53,32,8
-    LTEXT           SAWBUCK_VER_STR_DOTTED,IDC_VERSION,72,53,93,8
-    DEFPUSHBUTTON   "OK",IDOK,64,71,50,14
+    LTEXT           SAWBUCK_VER_STR_DOTTED,IDC_VERSION,72,53,101,8
+    DEFPUSHBUTTON   "OK",IDOK,65,71,50,14
 END
 
 IDD_PROVIDERDIALOG DIALOGEX 0, 0, 262, 182
@@ -135,9 +135,9 @@ STYLE DS_SETFONT | WS_THICKFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "Configure Providers"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_PROVIDERS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,7,248,139,WS_EX_LEFTSCROLLBAR
-    DEFPUSHBUTTON   "OK",IDOK,143,159,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,205,159,50,14
+    CONTROL         "",IDC_PROVIDERS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,7,248,147,WS_EX_LEFTSCROLLBAR
+    DEFPUSHBUTTON   "OK",IDOK,151,161,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,205,161,50,14
 END
 
 IDD_FINDDIALOG DIALOGEX 0, 0, 278, 60
