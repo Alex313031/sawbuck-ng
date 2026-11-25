@@ -65,8 +65,12 @@ BOOL ProviderDialog::OnInitDialog(CWindow focus, LPARAM init_param) {
 
   providers_.Attach(GetDlgItem(IDC_PROVIDERS));
 
+  // Grid lines always, whatever View > Show Cell Outlines says: that
+  // setting is for the two big lists in the main window. A small settings
+  // list reads better with its cells outlined.
   const DWORD kStyles =
-      LVS_EX_ONECLICKACTIVATE | LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT;
+      LVS_EX_ONECLICKACTIVATE | LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT |
+      LVS_EX_GRIDLINES;
   providers_.SetExtendedListViewStyle(kStyles, kStyles);
   providers_.AddColumn(L"Provider", COL_NAME);
   providers_.AddColumn(L"Log Level", COL_LEVEL);

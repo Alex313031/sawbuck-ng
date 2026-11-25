@@ -86,8 +86,12 @@ BOOL FilterDialog::OnInitDialog(CWindow focus_window, LPARAM init_param) {
   filter_list_view_.Attach(hwnd_list);
   filter_list_view_.AddColumns();
   // Set the extended styles we desire.
+  // Grid lines always, whatever View > Show Cell Outlines says: that
+  // setting is for the two big lists in the main window. A small settings
+  // list reads better with its cells outlined.
   const DWORD kStyles =
-      LVS_EX_ONECLICKACTIVATE | LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT;
+      LVS_EX_ONECLICKACTIVATE | LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT |
+      LVS_EX_GRIDLINES;
   filter_list_view_.SetExtendedListViewStyle(kStyles, kStyles);
 
   column_dropdown_.Attach(GetDlgItem(IDC_FILTER_COLUMN));

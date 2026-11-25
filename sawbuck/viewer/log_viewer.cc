@@ -34,7 +34,8 @@ LogViewer::LogViewer(CUpdateUIBase* update_ui)
       log_list_view_(update_ui),
       stack_trace_list_view_(update_ui),
       log_view_(NULL),
-      update_ui_(update_ui) {
+      update_ui_(update_ui),
+      show_grid_lines_(false) {
 }
 
 LogViewer::~LogViewer() {
@@ -70,6 +71,16 @@ int LogViewer::OnCreate(LPCREATESTRUCT create_struct) {
   // This is enabled so long as we live.
   update_ui_->UIEnable(ID_LOG_FILTER, true);
 
+  // Cell outlines, if they were left on. A missing value is the default, off.
+  CRegKey key;
+  if (key.Open(HKEY_CURRENT_USER, config::kSettingsKey, KEY_READ) ==
+      ERROR_SUCCESS) {
+    DWORD show = 0;
+    if (key.QueryDWORDValue(config::kShowGridLinesValue, show) == ERROR_SUCCESS)
+      show_grid_lines_ = (show != 0);
+  }
+  ApplyGridLines();
+
   // Read in any previously set filters.
   std::string filter_string;
   Preferences prefs;
@@ -94,6 +105,29 @@ LRESULT LogViewer::OnCommand(UINT msg,
                              BOOL& handled) {
   HWND window = GetSplitterPane(GetActivePane());
   return ::SendMessage(window, msg, wparam, lparam);
+}
+
+void LogViewer::OnToggleGridLines(UINT code, int id, CWindow window) {
+  // Handled here rather than forwarded by OnCommand to the pane with focus,
+  // for the reason OnExportLog gives: the command is about both lists.
+  show_grid_lines_ = !show_grid_lines_;
+  ApplyGridLines();
+
+  // Saved now rather than on the way out. There is nothing to gather at exit
+  // the way there is for a column layout, and a setting written when it
+  // changes survives a crash.
+  CRegKey key;
+  if (key.Create(HKEY_CURRENT_USER, config::kSettingsKey) == ERROR_SUCCESS)
+    key.SetDWORDValue(config::kShowGridLinesValue, show_grid_lines_ ? 1 : 0);
+}
+
+void LogViewer::ApplyGridLines() {
+  // The second argument is the mask, so only this one style changes.
+  const DWORD style = show_grid_lines_ ? LVS_EX_GRIDLINES : 0;
+  log_list_view_.SetExtendedListViewStyle(style, LVS_EX_GRIDLINES);
+  stack_trace_list_view_.SetExtendedListViewStyle(style, LVS_EX_GRIDLINES);
+
+  update_ui_->UISetCheck(ID_SHOW_LISTVIEW_CELLS, show_grid_lines_);
 }
 
 void LogViewer::OnExportLog(UINT code, int id, CWindow window) {

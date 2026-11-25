@@ -849,8 +849,9 @@ LRESULT ViewerWindow::OnResetSettings(WORD code,
                                       BOOL& handled) {
   const wchar_t kPrompt[] =
       L"This clears everything Sawbuck has remembered: the window position "
-      L"and size, the column layouts for all three lists, the symbol path, "
-      L"the filters, and the per-provider log levels.\n"
+      L"and size, the column layouts for all three lists, the cell outline "
+      L"setting, the symbol path, the filters, and the per-provider log "
+      L"levels.\n"
       L"\n"
       L"Provider registrations are left alone. Those live under "
       L"HKEY_LOCAL_MACHINE and belong to the installer, not to these "

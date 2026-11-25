@@ -51,6 +51,7 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
     COMMAND_ID_HANDLER_EX(ID_LOG_EXPORT, OnExportLog)
     COMMAND_ID_HANDLER_EX(ID_INCLUDE_COLUMN, OnIncludeColumn)
     COMMAND_ID_HANDLER_EX(ID_EXCLUDE_COLUMN, OnExcludeColumn)
+    COMMAND_ID_HANDLER_EX(ID_SHOW_LISTVIEW_CELLS, OnToggleGridLines)
     MESSAGE_HANDLER(WM_COMMAND, OnCommand)
     CHAIN_MSG_MAP(Super)
   END_MSG_MAP()
@@ -75,6 +76,12 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
   void OnExportLog(UINT code, int id, CWindow window);
   void OnIncludeColumn(UINT code, int id, CWindow window);
   void OnExcludeColumn(UINT code, int id, CWindow window);
+  void OnToggleGridLines(UINT code, int id, CWindow window);
+
+  // Puts show_grid_lines_ into effect on both lists and on the menu's check
+  // mark. Both lists, because the setting is about how Sawbuck's lists look
+  // and not about whichever one happens to have focus.
+  void ApplyGridLines();
 
   // Non-null iff filtering is enabled.
   scoped_ptr<FilteredLogView> filtered_log_view_;
@@ -93,6 +100,10 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
 
   // Used to update our UI.
   CUpdateUIBase* update_ui_;
+
+  // Whether the lists draw cell outlines, LVS_EX_GRIDLINES. Off unless the
+  // user has turned it on, and remembered under config::kShowGridLinesValue.
+  bool show_grid_lines_;
 };
 
 #endif  // SAWBUCK_VIEWER_LOG_VIEWER_H_

@@ -77,6 +77,7 @@ BEGIN
     POPUP "&View"
     BEGIN
         MENUITEM "Auto &Size Columns\tF12",     ID_VIEW_AUTOSIZE_COLUMNS
+        MENUITEM "Show Cell &Outlines\tCtrl+O", ID_SHOW_LISTVIEW_CELLS
     END
     POPUP "&Log"
     BEGIN
@@ -222,6 +223,7 @@ BEGIN
     "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
     // View
     VK_F12,         ID_VIEW_AUTOSIZE_COLUMNS, VIRTKEY, NOINVERT
+    "O",            ID_SHOW_LISTVIEW_CELLS,   VIRTKEY, CONTROL, NOINVERT
     // Log
     "E",            ID_LOG_CAPTURE,         VIRTKEY, CONTROL, NOINVERT
     "L",            ID_LOG_FILTER,          VIRTKEY, CONTROL, NOINVERT
@@ -270,6 +272,7 @@ BEGIN
     ID_LOG_REGISTER_PROVIDERS "Register default Chromium log providers.\nWhat's this?"
     ID_LOG_SYMBOLPATH         "View or change symbol path for stack traces.\nWhat's this?"
     ID_LOG_EXPORT             "Export log as a .txt file.\nWhat's this?"
+    ID_SHOW_LISTVIEW_CELLS    "Show or hide cell outlines in the lists.\nWhat's this?"
 END
 
 #endif    // English (U.S.) resources

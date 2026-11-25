@@ -94,12 +94,14 @@
 // Find Previous. There is no standard id for it in atlres.h the way there
 // is for Find Next (ID_EDIT_REPEAT), so it gets a local one.
 #define ID_EDIT_FIND_PREVIOUS           4018
+// Show standard win32 list view cell grid outlines.
+#define ID_SHOW_LISTVIEW_CELLS          4019
 
 // Next default values for new objects
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        109
-#define _APS_NEXT_COMMAND_VALUE         4019
+#define _APS_NEXT_COMMAND_VALUE         4020
 #define _APS_NEXT_CONTROL_VALUE         1023
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
