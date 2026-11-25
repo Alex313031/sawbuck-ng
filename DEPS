@@ -170,7 +170,7 @@ vars = {
 
   # See note 4 above. Roll this by hand, to the commit a winwrap release tag
   # points at, after checking Sawbuck still builds and runs against it.
-  'winwrap_revision': '34b26aff2e0fbd6266bd21ac6c3d2f9790d8448c',  # 0.4.8
+  'winwrap_revision': '73a59911382a69c27db85c43452dc08b92a004fb',  # 0.5.0
 }
 
 # Only these hosts are allowed for dependencies in this DEPS file.
