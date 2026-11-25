@@ -1,0 +1,54 @@
+Give base's ETW redirectors names of their own, so they stop colliding with
+winwrap at link time.
+
+base/trace_event/trace_event_etw_export_win.cc defines functions called
+EventRegister, EventWrite and EventUnregister -- and, since patch 05,
+EventWriteTransfer -- which forward to advapi32 through GetProcAddress. They
+are ordinary external symbols under the system's own names:
+_EventRegister@16 and so on.
+
+winwrap 0.4.9 began defining every function it redirects under its plain name
+as well as its __imp_ slot, for callers that reference a function by name. All
+of those names live in one object, plain_names_<arch>.obj, which is an
+ordinary archive member: nothing is extracted until something references one
+of them. Something does. base calls SHGetKnownFolderPath (base_paths_win.cc,
+win_util.cc), which the SDK declares without dllimport, so the reference is to
+the plain name and that object is what answers it. With it come winwrap's
+EventRegister, EventUnregister and EventWriteTransfer, and the link fails:
+
+  winwrap.lib(plain_names_x86.obj) : error LNK2005: _EventRegister@16 already
+  defined in base.lib(trace_event_etw_export_win.obj)
+
+Up to winwrap 0.4.8 this did not happen, because the plain SHGetKnownFolderPath
+was defined on its own in shell32.cc and brought nothing else along. Patch
+05's note that the two "do not conflict" was true of that version.
+
+The fix is four #defines ahead of the include of chrome_events_win.h, renaming
+the functions to base_EventRegister and so on. The declarations in evntprov.h,
+the calls the mc-generated header makes, and the definitions in this file are
+all renamed together, so nothing else changes: base still resolves the real
+functions with GetProcAddress, still returns 0 where they are absent, and its
+call sites still bind to its own definitions. It just no longer claims the
+system's names for them. This holds with or without winwrap in the link.
+
+--- a/base/trace_event/trace_event_etw_export_win.cc
++++ b/base/trace_event/trace_event_etw_export_win.cc
+@@ -23,6 +23,18 @@
+ // implement these functions locally instead of using the import library, and
+ // can therefore still run on Windows XP.
+ #define EVNTAPI __stdcall
++// Not in the original. The four redirectors below are given names of their
++// own, so that they are this file's and nobody else's. Under the system's
++// names they are external symbols called EventRegister and so on, and a
++// library that also defines those -- winwrap does, for callers that reference
++// the functions by name -- then collides with them at link time. Defined
++// ahead of the include so that evntprov.h's declarations, the calls
++// chrome_events_win.h generates, and the definitions below all take the new
++// names together. The GetProcAddress strings are untouched, being strings.
++#define EventRegister base_EventRegister
++#define EventWrite base_EventWrite
++#define EventUnregister base_EventUnregister
++#define EventWriteTransfer base_EventWriteTransfer
+ // Include the event register/write/unregister macros compiled from the manifest
+ // file. Note that this includes evntprov.h which requires a Vista+ Windows SDK.
+ //
