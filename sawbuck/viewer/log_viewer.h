@@ -101,8 +101,8 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
   // Used to update our UI.
   CUpdateUIBase* update_ui_;
 
-  // Whether the lists draw cell outlines, LVS_EX_GRIDLINES. Off unless the
-  // user has turned it on, and remembered under config::kShowGridLinesValue.
+  // Whether the lists draw cell outlines, LVS_EX_GRIDLINES. On unless the
+  // user has turned it off, and remembered under config::kShowGridLinesValue.
   bool show_grid_lines_;
 };
 

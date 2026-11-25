@@ -35,7 +35,7 @@ LogViewer::LogViewer(CUpdateUIBase* update_ui)
       stack_trace_list_view_(update_ui),
       log_view_(NULL),
       update_ui_(update_ui),
-      show_grid_lines_(false) {
+      show_grid_lines_(true) {
 }
 
 LogViewer::~LogViewer() {
@@ -71,7 +71,8 @@ int LogViewer::OnCreate(LPCREATESTRUCT create_struct) {
   // This is enabled so long as we live.
   update_ui_->UIEnable(ID_LOG_FILTER, true);
 
-  // Cell outlines, if they were left on. A missing value is the default, off.
+  // Cell outlines, unless they were turned off. A missing value is the
+  // default, on.
   CRegKey key;
   if (key.Open(HKEY_CURRENT_USER, config::kSettingsKey, KEY_READ) ==
       ERROR_SUCCESS) {
