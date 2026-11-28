@@ -63,6 +63,13 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
   // This must be called before the log window viewer is created.
   void SetLogView(ILogView* log_view);
 
+  // Shadows CSplitterImpl::SetSplitterPos to keep the bar away from the top
+  // of the window. Not virtual: WTL reaches it as pT->SetSplitterPos(), which
+  // is how every route to moving the bar arrives -- dragging, the arrow keys
+  // while dragging, and the repositioning on WM_SIZE. The defaults have to
+  // match Super's, because some of those calls pass no arguments.
+  bool SetSplitterPos(int pos = -1, bool update = true);
+
   void SetSymbolLookupService(ISymbolLookupService* symbol_lookup_service) {
     stack_trace_list_view_.SetSymbolLookupService(symbol_lookup_service);
   }
@@ -102,6 +109,9 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
 
   // Used to update our UI.
   CUpdateUIBase* update_ui_;
+
+  // The least height the bar leaves the log list, in pixels. Set in OnCreate.
+  int min_log_list_height_;
 
   // Whether the lists draw cell outlines, LVS_EX_GRIDLINES. On unless the
   // user has turned it off, and remembered under config::kShowGridLinesValue.

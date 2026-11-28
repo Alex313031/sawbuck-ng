@@ -33,6 +33,10 @@ namespace {
 // floor is what keeps the pane from starting out closed: a pane dragged shut
 // and then saved would otherwise come back as a bare splitter bar along the
 // bottom edge, which does not look like something that can be pulled up.
+//
+// The floor is also the least the log list above it is left with: the bar
+// cannot be dragged closer than this to the top of the window, so the log
+// list is always in view. See SetSplitterPos.
 const int kDefaultStackTraceHeight = 160;
 const int kMinStackTraceHeight = 60;
 
@@ -49,6 +53,7 @@ LogViewer::LogViewer(CUpdateUIBase* update_ui)
       stack_trace_list_view_(update_ui),
       log_view_(NULL),
       update_ui_(update_ui),
+      min_log_list_height_(0),
       show_grid_lines_(true) {
 }
 
@@ -117,8 +122,8 @@ int LogViewer::OnCreate(LPCREATESTRUCT create_struct) {
   // bar at the very bottom and the stack trace pane had no height at all.
   // Setting it here, before the window is first sized, is all it takes: there
   // is no rectangle yet for SetSplitterPos to work from.
-  m_nProportionalPos =
-      std::max(stack_trace_height, ::MulDiv(kMinStackTraceHeight, dpi, 96));
+  min_log_list_height_ = ::MulDiv(kMinStackTraceHeight, dpi, 96);
+  m_nProportionalPos = std::max(stack_trace_height, min_log_list_height_);
   ApplyGridLines();
 
   // Read in any previously set filters.
@@ -137,6 +142,16 @@ int LogViewer::OnCreate(LPCREATESTRUCT create_struct) {
 
   SetMsgHandled(FALSE);
   return 1;
+}
+
+bool LogViewer::SetSplitterPos(int pos, bool update) {
+  // -1 asks for the default position, which Super works out; anything else
+  // is a distance from the top of the window, and so the log list's height.
+  // Super then applies its own limit at the other end, which wins if the
+  // window is too short to give the log list even this much.
+  if (pos != -1 && pos < min_log_list_height_)
+    pos = min_log_list_height_;
+  return Super::SetSplitterPos(pos, update);
 }
 
 void LogViewer::OnDestroy() {
