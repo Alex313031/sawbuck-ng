@@ -15,6 +15,8 @@
 // Log viewer window implementation.
 #include "sawbuck/viewer/log_viewer.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -23,6 +25,18 @@
 #include "sawbuck/viewer/filter_dialog.h"
 #include "sawbuck/viewer/const_config.h"
 #include "sawbuck/viewer/preferences.h"
+
+namespace {
+
+// The height of the stack trace pane, in pixels at 96 DPI, when nothing has
+// been saved, and the least it is given at startup whatever was saved. The
+// floor is what keeps the pane from starting out closed: a pane dragged shut
+// and then saved would otherwise come back as a bare splitter bar along the
+// bottom edge, which does not look like something that can be pulled up.
+const int kDefaultStackTraceHeight = 160;
+const int kMinStackTraceHeight = 60;
+
+}  // namespace
 
 LogViewer::LogViewer(CUpdateUIBase* update_ui)
     // false is the splitter orientation: horizontal, so the log list sits
@@ -71,6 +85,14 @@ int LogViewer::OnCreate(LPCREATESTRUCT create_struct) {
   // This is enabled so long as we live.
   update_ui_->UIEnable(ID_LOG_FILTER, true);
 
+  int dpi = 96;
+  {
+    CClientDC dc(m_hWnd);
+    if (!dc.IsNull())
+      dpi = dc.GetDeviceCaps(LOGPIXELSY);
+  }
+  int stack_trace_height = ::MulDiv(kDefaultStackTraceHeight, dpi, 96);
+
   // Cell outlines, unless they were turned off. A missing value is the
   // default, on.
   CRegKey key;
@@ -79,7 +101,24 @@ int LogViewer::OnCreate(LPCREATESTRUCT create_struct) {
     DWORD show = 0;
     if (key.QueryDWORDValue(config::kShowGridLinesValue, show) == ERROR_SUCCESS)
       show_grid_lines_ = (show != 0);
+
+    DWORD height = 0;
+    if (key.QueryDWORDValue(config::kStackTraceHeightValue, height) ==
+        ERROR_SUCCESS) {
+      // Bounded above only so that a damaged value cannot overflow the
+      // arithmetic; a pane taller than the window is clamped by the splitter.
+      stack_trace_height = static_cast<int>(height < 0x7FFF ? height : 0x7FFF);
+    }
   }
+
+  // With SPLIT_BOTTOMALIGNED the splitter keeps the bottom pane's height in
+  // m_nProportionalPos, and places the bar that far above the bottom edge on
+  // every WM_SIZE. It starts at zero, so left alone the first WM_SIZE put the
+  // bar at the very bottom and the stack trace pane had no height at all.
+  // Setting it here, before the window is first sized, is all it takes: there
+  // is no rectangle yet for SetSplitterPos to work from.
+  m_nProportionalPos =
+      std::max(stack_trace_height, ::MulDiv(kMinStackTraceHeight, dpi, 96));
   ApplyGridLines();
 
   // Read in any previously set filters.
@@ -98,6 +137,23 @@ int LogViewer::OnCreate(LPCREATESTRUCT create_struct) {
 
   SetMsgHandled(FALSE);
   return 1;
+}
+
+void LogViewer::OnDestroy() {
+  // The height of the stack trace pane, which for a bottom-aligned splitter
+  // is what m_nProportionalPos holds -- kept up to date as the bar is dragged,
+  // and left alone when the window is merely resized. Read from there rather
+  // than worked out from the pane's rectangle, which is clamped when the
+  // window is small and would save a height the user never chose.
+  CRegKey key;
+  if (m_nProportionalPos >= 0 &&
+      key.Create(HKEY_CURRENT_USER, config::kSettingsKey) == ERROR_SUCCESS) {
+    key.SetDWORDValue(config::kStackTraceHeightValue,
+                      static_cast<DWORD>(m_nProportionalPos));
+  }
+
+  // The panes and the splitter still have their own teardown to do.
+  SetMsgHandled(FALSE);
 }
 
 LRESULT LogViewer::OnCommand(UINT msg,

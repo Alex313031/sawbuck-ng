@@ -65,6 +65,8 @@ const wchar_t kExcludeReValue[] = L"exclude_re";
 const wchar_t kWindowPosValue[] = L"window_pos";
 // DWORD, non-zero if the log and stack trace lists draw cell outlines.
 const wchar_t kShowGridLinesValue[] = L"show_grid_lines";
+// DWORD, the height of the stack trace pane in pixels.
+const wchar_t kStackTraceHeightValue[] = L"stack_trace_height";
 const wchar_t kLogViewColumnOrder[] = L"log_view_column_order";
 const wchar_t kLogViewColumnWidths[] = L"log_view_column_widths";
 

@@ -46,6 +46,7 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
   static const UINT WM_NEW_MESSAGES = WM_USER + 109;
   BEGIN_MSG_MAP_EX(ViewerWindow)
     MSG_WM_CREATE(OnCreate)
+    MSG_WM_DESTROY(OnDestroy)
     REFLECT_NOTIFICATIONS()
     COMMAND_ID_HANDLER_EX(ID_LOG_FILTER, OnLogFilter)
     COMMAND_ID_HANDLER_EX(ID_LOG_EXPORT, OnExportLog)
@@ -71,6 +72,7 @@ class LogViewer : public CSplitterWindowImpl<LogViewer> {
 
  private:
   int OnCreate(LPCREATESTRUCT create_struct);
+  void OnDestroy();
   LRESULT OnCommand(UINT msg, WPARAM wparam, LPARAM lparam, BOOL& handled);
   void OnLogFilter(UINT code, int id, CWindow window);
   void OnExportLog(UINT code, int id, CWindow window);
